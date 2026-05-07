@@ -5,6 +5,7 @@ import TreesPage from './pages/TreesPage';
 import ValidationPage from './pages/ValidationPage';
 import AlertsPage from './pages/AlertsPage';
 import ReportsPage from './pages/ReportsPage';
+import HardwareTestPage from './pages/HardwareTestPage'; // 👈 1. Importação da nova página adicionada
 import DashboardLayout from './components/DashboardLayout';
 
 export const router = createBrowserRouter([
@@ -49,6 +50,15 @@ export const router = createBrowserRouter([
     element: (
       <DashboardLayout>
         <ReportsPage />
+      </DashboardLayout>
+    ),
+  },
+  // 👈 2. Bloco da nova rota do Hardware adicionado!
+  {
+    path: '/hardware',
+    element: (
+      <DashboardLayout>
+        <HardwareTestPage />
       </DashboardLayout>
     ),
   },

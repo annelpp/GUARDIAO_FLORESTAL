@@ -5,14 +5,12 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { mockAlerts, mockTrees, Tree } from '../data/mockData';
-// 1. Import the History Modal component
 import TreeHistoryModal from '../components/TreeHistoryModal';
 
 export default function AlertsPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // 2. Add local storage reading for the latest tree data
   const [trees, setTrees] = useState<Tree[]>([]);
   useEffect(() => {
     const savedTrees = localStorage.getItem('@CercaDigital:trees');
@@ -23,7 +21,6 @@ export default function AlertsPage() {
     }
   }, []);
 
-  // 3. Add Modal control state
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTree, setHistoryTree] = useState<Tree | null>(null);
 
@@ -83,7 +80,6 @@ export default function AlertsPage() {
     // Aqui implementaria a lógica real
   };
 
-  // 4. Method to trigger the history modal linked to an alert
   const handleViewHistory = (treeId: string) => {
      const selectedTree = trees.find(t => t.id === treeId) || null;
      if(selectedTree) {

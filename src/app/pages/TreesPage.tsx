@@ -11,7 +11,6 @@ import TreeForm from '../components/TreeForm';
 import TreeHistoryModal from '../components/TreeHistoryModal';
 
 export default function TreesPage() {
-  // Estado das árvores integrado ao localStorage
   const [trees, setTrees] = useState<Tree[]>(() => {
     const savedTrees = localStorage.getItem('@CercaDigital:trees');
     if (savedTrees) {
@@ -23,20 +22,16 @@ export default function TreesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   
-  // Estados do Modal de Edição/Cadastro
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTree, setEditingTree] = useState<Tree | null>(null);
 
-  // Estados do Modal de Histórico
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyTree, setHistoryTree] = useState<Tree | null>(null);
 
-  // Salva no localStorage sempre que 'trees' for alterado
   useEffect(() => {
     localStorage.setItem('@CercaDigital:trees', JSON.stringify(trees));
   }, [trees]);
 
-  // Lógica de Filtros
   const filteredTrees = trees.filter(tree => {
     const matchesSearch = tree.species.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           tree.nfcId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -44,7 +39,6 @@ export default function TreesPage() {
     return matchesSearch && matchesFilter;
   });
 
-  // Estilização de Badges
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'safe':
@@ -73,7 +67,6 @@ export default function TreesPage() {
     }
   };
 
-  // Handlers (Ações de clique)
   const handleNewTreeClick = () => {
     setEditingTree(null);
     setIsDialogOpen(true);
@@ -91,10 +84,8 @@ export default function TreesPage() {
 
   const handleSaveTree = (data: Partial<Tree>) => {
     if (editingTree) {
-      // MODO EDIÇÃO
       setTrees(prev => prev.map(t => t.id === editingTree.id ? { ...t, ...data } as Tree : t));
     } else {
-      // MODO NOVO CADASTRO
       const newTree: Tree = {
         ...data,
         id: `tree-${Math.random().toString(36).substr(2, 9)}`,

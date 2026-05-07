@@ -58,13 +58,11 @@ export default function ReportsPage() {
     { month: 'Mar/26', trees: 156, alerts: 5, validations: 82 },
   ];
 
-  // 1. TRANSFORMADA EM ASSÍNCRONA E CONTROLANDO ESTADO DE CARREGAMENTO
   const exportReport = async (type: string) => {
     setIsExporting(true); // Impede múltiplos cliques
     try {
       switch (type) {
         case 'pdf':
-          // Passamos a string 'dashboard-charts-container' que mapeia a Div abaixo
           await generateFullPDFReport(trees, mockAlerts, 'dashboard-charts-container');
           break;
         case 'excel':

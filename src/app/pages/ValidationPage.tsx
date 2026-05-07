@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
-  Smartphone, Wifi, CheckCircle2, XCircle, 
-  MapPin, Thermometer, Clock, User, FileText,
-  Camera, AlertTriangle, Ruler, Droplets, Wind, Bug
+  Smartphone, CheckCircle2, MapPin, Thermometer, 
+  Clock, User, FileText, AlertTriangle, Droplets, 
+  Wind, Usb, ShieldCheck, Flame, Info, Terminal, Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -13,573 +13,437 @@ import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockTrees, mockValidations } from '../data/mockData';
+import { mockTrees, mockValidations, Tree } from '../data/mockData';
+
+interface SensorData {
+  temp: number;
+  umidade: number;
+  gas: number;
+  alarme: boolean;
+  msg: string;
+}
 
 export default function ValidationPage() {
-  const [validationStep, setValidationStep] = useState<'idle' | 'nfc' | 'sensor' | 'inspection' | 'complete'>('idle');
+  // ==========================================
+  // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO)
+  // ==========================================
+  const [isConnected, setIsConnected] = useState(false);
+  const [sensorData, setSensorData] = useState<SensorData | null>(null);
+  const [serialError, setSerialError] = useState<string>('');
+  const [serialLogs, setSerialLogs] = useState<string[]>([]);
+  
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const readerRef = useRef<any>(null);
+  const portRef = useRef<any>(null);
+
+  // ==========================================
+  // ESTADO 2: AUDITORIA DE ÁRVORE (NFC + HUMANO)
+  // ==========================================
+  const [treeStep, setTreeStep] = useState<'idle' | 'nfc' | 'inspection'>('idle');
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fiscalName, setFiscalName] = useState('');
   const [fiscalId, setFiscalId] = useState('');
   const [notes, setNotes] = useState('');
   const [nfcVerified, setNfcVerified] = useState(false);
-  const [sensorVerified, setSensorVerified] = useState(false);
-  
-  // Novos campos de inspeção
+
   const [inspectionData, setInspectionData] = useState({
-    trunkCondition: '',
-    foliageHealth: '',
-    soilCondition: '',
-    nfcTagIntegrity: '',
-    visualDamage: false,
-    pestsSigns: false,
-    illegalCutSigns: false,
-    fireRiskLevel: '',
-    currentDiameter: '',
-    weatherCondition: '',
-    soilMoisture: '',
-    photosCount: 0,
+    trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
+    visualDamage: false, pestsSigns: false, illegalCutSigns: false,
+    fireRiskLevel: '', currentDiameter: '', weatherCondition: '',
+    soilMoisture: '', photosCount: 0,
   });
 
-  const selectedTree = mockTrees.find(t => t.id === selectedTreeId);
+  const [localTrees, setLocalTrees] = useState<Tree[]>(mockTrees);
 
-  const startValidation = () => {
-    if (!fiscalName || !fiscalId) return;
-    
-    setValidationStep('nfc');
-    // Simular leitura NFC após 2 segundos
-    setTimeout(() => {
-      setNfcVerified(true);
-      setSelectedTreeId('tree-001'); // Simular árvore encontrada
-      setValidationStep('sensor');
+  useEffect(() => {
+    const savedTrees = localStorage.getItem('@CercaDigital:trees');
+    if (savedTrees) setLocalTrees(JSON.parse(savedTrees));
+  }, []);
+
+  // Auto-scroll do terminal
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [serialLogs]);
+
+  // ==========================================
+  // LÓGICA DO ARDUINO (ÁREA)
+  // ==========================================
+  const connectPhysicalSensor = async () => {
+    try {
+      if (!('serial' in navigator)) {
+        setSerialError('Navegador incompatível com porta serial. Use Chrome ou Edge.');
+        return;
+      }
+
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate: 115200 });
       
-      // Simular conexão com sensor após mais 2 segundos
-      setTimeout(() => {
-        setSensorVerified(true);
-        setValidationStep('inspection');
-      }, 2000);
-    }, 2000);
+      // Impede o ESP32/Arduino de resetar ao abrir a porta
+      await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+
+      portRef.current = port;
+      setIsConnected(true);
+      setSerialError('');
+      setSerialLogs(['> Sistema Guardião Base estabelecido. Monitorando perímetro...']);
+
+      const textDecoder = new TextDecoderStream();
+      port.readable.pipeTo(textDecoder.writable);
+      const reader = textDecoder.readable.getReader();
+      readerRef.current = reader;
+
+      let partialData = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          reader.releaseLock();
+          break;
+        }
+        
+        partialData += value;
+        const lines = partialData.split('\n');
+        partialData = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (trimmedLine) {
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            let logMsg = trimmedLine; // Começa com o texto cru, caso não seja JSON
+
+            // Se for um pacote JSON, nós interceptamos e formatamos bonito!
+            if (trimmedLine.startsWith('{') && trimmedLine.endsWith('}')) {
+              try {
+                const parsed = JSON.parse(trimmedLine);
+                if (parsed.temp !== undefined && parsed.umidade !== undefined) {
+                  setSensorData(parsed);
+                  
+                  // Lógica de ícones para o log
+                  const icone = parsed.alarme ? '⚠️ PERIGO' : (parsed.temp >= 32 ? '⚠️ ATENÇÃO' : ' OK');
+                  const msgTratada = parsed.alarme ? parsed.msg : (parsed.temp >= 32 ? "Temperatura necessita atenção" : parsed.msg);
+                  
+                  // Formatação amigável para o olho humano 
+                  logMsg = `Temp: ${parsed.temp.toFixed(1)}°C | Umi: ${parsed.umidade.toFixed(0)}% | Gás: ${parsed.gas} | ${icone} (${msgTratada})`;
+                }
+              } catch (err) {
+                // Se der erro ao ler o JSON, ignora e imprime o texto cru
+              }
+            }
+
+            // Adiciona a linha (formatada ou crua) na telinha preta
+            setSerialLogs(prev => [...prev.slice(-49), `[${timestamp}] ${logMsg}`]);
+          }
+        }
+      }
+    } catch (err: any) {
+      if (err.message.includes("No port selected")) {
+        setSerialError("Seleção cancelada pelo usuário.");
+      } else if (err.message.includes("Failed to open") || err.message.includes("Access denied")) {
+        setSerialError("A porta COM está trancada! Feche o monitor serial do VS Code.");
+      } else {
+        setSerialError(`Erro de conexão USB: ${err.message}`);
+      }
+      setIsConnected(false);
+    }
   };
 
-  const resetValidation = () => {
-    setValidationStep('idle');
+  const disconnectSensor = async () => {
+    if (readerRef.current) await readerRef.current.cancel();
+    if (portRef.current) await portRef.current.close();
+    setIsConnected(false);
+    setSensorData(null);
+    setSerialLogs(prev => [...prev, '> Monitoramento de área desativado.']);
+  };
+
+  useEffect(() => {
+    return () => { if (isConnected) disconnectSensor(); };
+  }, [isConnected]);
+
+  // ==========================================
+  // LÓGICA DA ÁRVORE (NFC + INSPEÇÃO)
+  // ==========================================
+  const startTreeValidation = () => {
+    if (!fiscalName || !fiscalId || !selectedTreeId) return;
+    setTreeStep('nfc');
+    setTimeout(() => {
+      setNfcVerified(true);
+      setTreeStep('inspection');
+    }, 1500);
+  };
+
+  const resetTreeValidation = () => {
+    setTreeStep('idle');
     setSelectedTreeId(null);
     setNfcVerified(false);
-    setSensorVerified(false);
     setNotes('');
     setInspectionData({
-      trunkCondition: '',
-      foliageHealth: '',
-      soilCondition: '',
-      nfcTagIntegrity: '',
-      visualDamage: false,
-      pestsSigns: false,
-      illegalCutSigns: false,
-      fireRiskLevel: '',
-      currentDiameter: '',
-      weatherCondition: '',
-      soilMoisture: '',
-      photosCount: 0,
+      trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
+      visualDamage: false, pestsSigns: false, illegalCutSigns: false,
+      fireRiskLevel: '', currentDiameter: '', weatherCondition: '',
+      soilMoisture: '', photosCount: 0,
     });
   };
 
   const submitValidation = () => {
-    console.log('Validação enviada:', {
-      treeId: selectedTreeId,
-      fiscalName,
-      fiscalId,
-      notes,
-      nfcVerified,
-      sensorVerified,
-      inspectionData,
-      timestamp: new Date().toISOString(),
-    });
-    alert('Validação enviada com sucesso!');
-    resetValidation();
-  };
-
-  const simulatePhotoCapture = () => {
-    setInspectionData(prev => ({ ...prev, photosCount: prev.photosCount + 1 }));
+    let finalStatus = 'approved';
+    
+    if (
+      inspectionData.illegalCutSigns || 
+      (sensorData && sensorData.alarme === true)
+    ) {
+      finalStatus = 'rejected';
+    }
+    
+    alert(`Certificado Emitido! Status: ${finalStatus === 'approved' ? 'APROVADA ✅' : 'REJEITADA ❌'}`);
+    resetTreeValidation();
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Validação em Campo</h1>
-        <p className="text-gray-600">Sistema de validação dupla: NFC + Sensor em tempo real</p>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+            <ShieldCheck className="text-green-600 size-8"/> Central de Operações em Campo
+        </h1>
+        <p className="text-gray-600">Monitore o perímetro via IoT e realize auditorias individuais simultaneamente.</p>
       </div>
 
-      {/* Explicação do Sistema */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <div className="bg-blue-600 text-white p-3 rounded-full">
-              <Smartphone className="size-6" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold mb-2">Como Funciona a Validação</h3>
-              <ol className="space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600">1.</span>
-                  <span><strong>Leitura NFC:</strong> Aproxime seu celular da etiqueta NFC na árvore para ler o "RG Digital"</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600">2.</span>
-                  <span><strong>Conexão com Sensor:</strong> O sistema conecta automaticamente via Bluetooth ao ESP32 da árvore</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600">3.</span>
-                  <span><strong>Verificação em Tempo Real:</strong> Valida que a árvore está "viva" e no local correto</span>
-                </li>
-              </ol>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Processo de Validação */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Nova Validação</CardTitle>
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
+        
+        {/* ========================================== */}
+        {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO) */}
+        {/* ========================================== */}
+        <Card className="border-blue-200 bg-slate-50 shadow-md sticky top-6">
+          <CardHeader className="bg-blue-600 text-white rounded-t-lg pb-4">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span className="flex items-center gap-2"><Activity className="size-5"/> Estação de Área (IoT)</span>
+              {isConnected ? (
+                <Badge variant="outline" className="bg-green-500/20 text-white border-none animate-pulse">Online</Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-white/20 text-white">Offline</Badge>
+              )}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Informações do Fiscal */}
-            <div className="space-y-2">
-              <Label htmlFor="fiscal">Nome do Fiscal *</Label>
-              <Input
-                id="fiscal"
-                placeholder="Seu nome completo"
-                value={fiscalName}
-                onChange={(e) => setFiscalName(e.target.value)}
-                disabled={validationStep !== 'idle'}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fiscalId">ID do Fiscal *</Label>
-              <Input
-                id="fiscalId"
-                placeholder="Seu ID de fiscal"
-                value={fiscalId}
-                onChange={(e) => setFiscalId(e.target.value)}
-                disabled={validationStep !== 'idle'}
-              />
+          <CardContent className="pt-6 space-y-4">
+            {!isConnected ? (
+               <div className="space-y-3 text-center py-6">
+                    <Usb className="size-12 mx-auto text-blue-300" />
+                    <p className="text-sm text-slate-600 px-4">Conecte o sensor base na porta USB para monitorar perigos no perímetro (Incêndios, Gás, etc) antes de iniciar as rondas.</p>
+                    {serialError && <p className="text-sm text-red-600 font-bold">{serialError}</p>}
+                    <Button onClick={connectPhysicalSensor} className="bg-blue-600 hover:bg-blue-700 w-full mt-2">
+                        Conectar Estação USB
+                    </Button>
+               </div>
+            ) : (
+              <div className="space-y-4">
+                
+                {/* 1. CABEÇALHO DO STATUS (3 níveis: Perigo, Atenção, Seguro) */}
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     {sensorData?.alarme ? (
+                       <AlertTriangle className="size-5 text-red-600" />
+                     ) : sensorData?.temp !== undefined && sensorData.temp >= 32 ? (
+                       <AlertTriangle className="size-5 text-orange-500" />
+                     ) : (
+                       <CheckCircle2 className="size-5 text-green-600" />
+                     )}
+                     <span className={`font-semibold ${
+                        sensorData?.alarme ? 'text-red-800' : 
+                        sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-800' : 
+                        'text-green-800'
+                     }`}>
+                        {sensorData?.alarme ? 'ALERTA CRÍTICO NO PERÍMETRO' : 
+                         sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'ATENÇÃO NO PERÍMETRO' : 
+                         'Área Segura para Ronda'}
+                     </span>
+                   </div>
+                   <Button variant="outline" size="sm" onClick={disconnectSensor} className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                     Desconectar
+                   </Button>
+                </div>
+                
+                {/* 2. CAIXA DE MENSAGEM (Forçando aviso de temperatura alta se necessário) */}
+                {sensorData && (
+                    <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${
+                        sensorData.alarme ? 'bg-red-50 border-red-200 text-red-700' : 
+                        sensorData.temp >= 32 ? 'bg-orange-50 border-orange-200 text-orange-700' : 
+                        'bg-white border-slate-200 text-slate-700'
+                    }`}>
+                        <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp >= 32 ? 'text-orange-500' : 'text-blue-500'}`}/> 
+                        Status da Área: <strong>
+                          {sensorData.alarme ? sensorData.msg : (sensorData.temp >= 32 ? "Temperatura necessita atenção" : sensorData.msg)}
+                        </strong>
+                    </div>
+                )}
+                
+                {/* 3. OS 4 CARTÕES DE DADOS */}
+                <div className="grid grid-cols-4 gap-2">
+                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${
+                      sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'bg-red-100 border-red-500' : 
+                      sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
+                      'bg-white'
+                  }`}>
+                      <Thermometer className={`size-5 mb-1 ${
+                          sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'text-red-600' : 
+                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-600' : 
+                          'text-orange-500'
+                      }`}/>
+                      <span className={`font-bold text-sm ${
+                          sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'text-red-700' : 
+                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-700' : 
+                          'text-slate-800'
+                      }`}>
+                          {sensorData?.temp !== undefined ? sensorData.temp.toFixed(1) : '--'}°C
+                      </span>
+                  </div>
+
+                  <div className="bg-white p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20">
+                      <Droplets className="size-5 text-blue-400 mb-1"/>
+                      <span className="font-bold text-sm">{sensorData?.umidade !== undefined ? sensorData.umidade.toFixed(0) : '--'}%</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20">
+                      <Wind className="size-5 text-slate-500 mb-1"/>
+                      <span className="font-bold text-sm">{sensorData?.gas ?? '--'}</span>
+                  </div>
+                  
+                  {/* CARTÃO DE STATUS GERAL (3 níveis) */}
+                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${
+                      sensorData?.alarme ? 'bg-red-100 border-red-500' : 
+                      sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
+                      'bg-white'
+                  }`}>
+                      <Flame className={`size-5 mb-1 ${
+                          sensorData?.alarme ? 'text-red-600' : 
+                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-500' : 
+                          'text-green-500'
+                      }`}/>
+                      <span className={`font-bold text-xs tracking-wider ${
+                          sensorData?.alarme ? 'text-red-600' : 
+                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-600' : 
+                          'text-green-600'
+                      }`}>
+                          {sensorData?.alarme ? 'PERIGO' : 
+                           sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'ATENÇÃO' : 
+                           'SEGURO'}
+                      </span>
+                  </div>
+                </div>
+
+                {/* CONSOLE FICA ABAIXO DISSO INALTERADO... */}
+                <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800 shadow-inner">
+                  <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between border-b border-slate-700">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                      <Terminal className="size-3" /> Console de Monitoramento
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+                      <span className="text-[10px] text-green-400 font-mono">LIVE</span>
+                    </div>
+                  </div>
+                  <div className="h-40 p-3 overflow-y-auto text-[11px] font-mono text-green-400 space-y-1">
+                    {serialLogs.length === 0 ? (
+                      <span className="text-slate-500">Aguardando dados...</span>
+                    ) : (
+                      serialLogs.map((log, idx) => (
+                        <div key={idx} className="break-all hover:bg-slate-800 px-1 rounded transition-colors">
+                          {log}
+                        </div>
+                      ))
+                    )}
+                    <div ref={logEndRef} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ========================================== */}
+        {/* COLUNA DIREITA: AUDITORIA DE ÁRVORE (NFC) */}
+        {/* ========================================== */}
+        <Card className="border-green-200 shadow-sm">
+          <CardHeader className="bg-green-600 text-white rounded-t-lg pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="size-5"/> Auditoria Individual (Árvores)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fiscal">Nome do Fiscal *</Label>
+                <Input id="fiscal" placeholder="João Silva" value={fiscalName} onChange={(e) => setFiscalName(e.target.value)} disabled={treeStep !== 'idle'} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fiscalId">ID Operacional *</Label>
+                <Input id="fiscalId" placeholder="12345" value={fiscalId} onChange={(e) => setFiscalId(e.target.value)} disabled={treeStep !== 'idle'} />
+              </div>
             </div>
 
-            {/* Botão Iniciar ou Status */}
-            {validationStep === 'idle' && (
-              <Button 
-                onClick={startValidation} 
-                className="w-full" 
-                size="lg"
-                disabled={!fiscalName || !fiscalId}
-              >
-                <Smartphone className="size-5 mr-2" />
-                Iniciar Validação NFC
+            <div className="space-y-2">
+              <Label>Árvore Alvo da Inspeção</Label>
+              <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle'}>
+                <SelectTrigger><SelectValue placeholder="Selecione a árvore encontrada..." /></SelectTrigger>
+                <SelectContent>
+                  {localTrees.map(t => <SelectItem key={t.id} value={t.id}>{t.species} ({t.nfcId})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {treeStep === 'idle' && (
+              <Button onClick={startTreeValidation} className="w-full bg-green-600 hover:bg-green-700 h-12 text-md" disabled={!fiscalName || !fiscalId || !selectedTreeId}>
+                <Smartphone className="size-5 mr-2" /> Ler Identidade (NFC)
               </Button>
             )}
 
-            {/* Status NFC */}
-            {validationStep !== 'idle' && (
-              <div className="space-y-4">
-                <Alert className={nfcVerified ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}>
-                  <div className="flex items-center gap-3">
-                    {nfcVerified ? (
-                      <CheckCircle2 className="size-5 text-green-600" />
-                    ) : (
-                      <div className="size-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    )}
-                    <AlertDescription>
-                      {nfcVerified ? (
-                        <span className="text-green-800 font-semibold">✓ NFC Lido com Sucesso</span>
-                      ) : (
-                        <span className="text-blue-800">Aguardando leitura NFC...</span>
-                      )}
-                    </AlertDescription>
-                  </div>
-                </Alert>
-
-                {/* Status Sensor */}
-                {validationStep === 'sensor' || validationStep === 'inspection' || validationStep === 'complete' ? (
-                  <Alert className={sensorVerified ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}>
-                    <div className="flex items-center gap-3">
-                      {sensorVerified ? (
-                        <CheckCircle2 className="size-5 text-green-600" />
-                      ) : (
-                        <div className="size-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      )}
-                      <AlertDescription>
-                        {sensorVerified ? (
-                          <span className="text-green-800 font-semibold">✓ Sensor Verificado</span>
-                        ) : (
-                          <span className="text-blue-800">Conectando ao sensor via Bluetooth...</span>
-                        )}
-                      </AlertDescription>
-                    </div>
-                  </Alert>
-                ) : null}
-              </div>
+            {treeStep !== 'idle' && (
+              <Alert className={nfcVerified ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}>
+                <div className="flex items-center gap-3">
+                  {nfcVerified ? <CheckCircle2 className="size-5 text-green-600" /> : <div className="size-5 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />}
+                  <AlertDescription>
+                    {nfcVerified ? <span className="text-green-800 font-semibold">✓ Localização e NFC Confirmados</span> : <span className="text-slate-600">Aproximando celular da Tag...</span>}
+                  </AlertDescription>
+                </div>
+              </Alert>
             )}
 
-            {/* Dados da Árvore (após NFC) */}
-            {selectedTree && validationStep !== 'idle' && (
-              <div className="bg-gray-50 rounded-lg p-4 border space-y-3">
-                <h4 className="font-bold">Dados da Árvore</h4>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <FileText className="size-4 text-gray-400" />
-                    <span className="text-gray-600">Espécie:</span>
-                    <span className="font-semibold">{selectedTree.species}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">ID NFC:</span>
-                    <Badge variant="outline">{selectedTree.nfcId}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="size-4 text-gray-400" />
-                    <span className="text-gray-600">Idade:</span>
-                    <span className="font-semibold">{selectedTree.age} anos</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="size-4 text-gray-400" />
-                    <span className="text-gray-600">GPS:</span>
-                    <span className="font-mono text-xs">{selectedTree.latitude}, {selectedTree.longitude}</span>
-                  </div>
-                  {sensorVerified && (
-                    <div className="flex items-center gap-2">
-                      <Thermometer className="size-4 text-gray-400" />
-                      <span className="text-gray-600">Temperatura Atual:</span>
-                      <span className="font-bold text-green-600">{selectedTree.temperature}°C</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Inspeção da Árvore */}
-            {validationStep === 'inspection' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="trunkCondition">Condição do Tronco</Label>
-                  <Select
-                    id="trunkCondition"
-                    value={inspectionData.trunkCondition}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, trunkCondition: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a condição do tronco" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="excelente">Excelente</SelectItem>
-                      <SelectItem value="bom">Bom</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                      <SelectItem value="ruim">Ruim</SelectItem>
-                      <SelectItem value="muito_ruim">Muito Ruim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="foliageHealth">Saúde da Folhagem</Label>
-                  <Select
-                    id="foliageHealth"
-                    value={inspectionData.foliageHealth}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, foliageHealth: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a saúde da folhagem" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="excelente">Excelente</SelectItem>
-                      <SelectItem value="bom">Bom</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                      <SelectItem value="ruim">Ruim</SelectItem>
-                      <SelectItem value="muito_ruim">Muito Ruim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="soilCondition">Condição do Solo</Label>
-                  <Select
-                    id="soilCondition"
-                    value={inspectionData.soilCondition}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, soilCondition: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a condição do solo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="excelente">Excelente</SelectItem>
-                      <SelectItem value="bom">Bom</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                      <SelectItem value="ruim">Ruim</SelectItem>
-                      <SelectItem value="muito_ruim">Muito Ruim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="nfcTagIntegrity">Integridade da Tag NFC</Label>
-                  <Select
-                    id="nfcTagIntegrity"
-                    value={inspectionData.nfcTagIntegrity}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, nfcTagIntegrity: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a integridade da tag NFC" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="excelente">Excelente</SelectItem>
-                      <SelectItem value="bom">Bom</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                      <SelectItem value="ruim">Ruim</SelectItem>
-                      <SelectItem value="muito_ruim">Muito Ruim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="visualDamage">Danos Visuais</Label>
-                  <Checkbox
-                    id="visualDamage"
-                    checked={inspectionData.visualDamage}
-                    onCheckedChange={(checked) => setInspectionData(prev => ({ ...prev, visualDamage: checked === true }))}
-                  >
-                    Há danos visuais na árvore?
-                  </Checkbox>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pestsSigns">Sinais de Pragas</Label>
-                  <Checkbox
-                    id="pestsSigns"
-                    checked={inspectionData.pestsSigns}
-                    onCheckedChange={(checked) => setInspectionData(prev => ({ ...prev, pestsSigns: checked === true }))}
-                  >
-                    Há sinais de pragas na árvore?
-                  </Checkbox>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="illegalCutSigns">Sinais de Corte Ilegal</Label>
-                  <Checkbox
-                    id="illegalCutSigns"
-                    checked={inspectionData.illegalCutSigns}
-                    onCheckedChange={(checked) => setInspectionData(prev => ({ ...prev, illegalCutSigns: checked === true }))}
-                  >
-                    Há sinais de corte ilegal na árvore?
-                  </Checkbox>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fireRiskLevel">Nível de Risco de Incêndio</Label>
-                  <Select
-                    id="fireRiskLevel"
-                    value={inspectionData.fireRiskLevel}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, fireRiskLevel: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o nível de risco de incêndio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixo">Baixo</SelectItem>
-                      <SelectItem value="medio">Médio</SelectItem>
-                      <SelectItem value="alto">Alto</SelectItem>
-                      <SelectItem value="muito_alto">Muito Alto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currentDiameter">Diâmetro Atual (cm)</Label>
-                  <Input
-                    id="currentDiameter"
-                    placeholder="Digite o diâmetro atual da árvore"
-                    value={inspectionData.currentDiameter}
-                    onChange={(e) => setInspectionData(prev => ({ ...prev, currentDiameter: e.target.value }))}
-                    type="number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weatherCondition">Condição do Tempo</Label>
-                  <Select
-                    id="weatherCondition"
-                    value={inspectionData.weatherCondition}
-                    onValueChange={(value) => setInspectionData(prev => ({ ...prev, weatherCondition: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a condição do tempo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sol">Sol</SelectItem>
-                      <SelectItem value="nublado">Nublado</SelectItem>
-                      <SelectItem value="chuva">Chuva</SelectItem>
-                      <SelectItem value="neve">Neve</SelectItem>
-                      <SelectItem value="tempestade">Tempestade</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="soilMoisture">Umidade do Solo (%)</Label>
-                  <Input
-                    id="soilMoisture"
-                    placeholder="Digite a umidade do solo"
-                    value={inspectionData.soilMoisture}
-                    onChange={(e) => setInspectionData(prev => ({ ...prev, soilMoisture: e.target.value }))}
-                    type="number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="photosCount">Fotos Capturadas</Label>
-                  <div className="flex items-center gap-2">
-                    <Camera className="size-4 text-gray-400" />
-                    <span className="text-gray-600">Capturadas:</span>
-                    <span className="font-bold text-green-600">{inspectionData.photosCount}</span>
-                    <Button
-                      onClick={simulatePhotoCapture}
-                      className="ml-2"
-                      size="sm"
-                    >
-                      Capturar Foto
-                    </Button>
+            {treeStep === 'inspection' && (
+              <div className="space-y-5 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    <AlertTriangle className="size-5 text-yellow-500"/> Check-list Humano
+                </h3>
+                
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <p className="font-semibold text-sm text-yellow-800 mb-3">Sinais de Infrações</p>
+                  <div className="space-y-3">
+                      <div className="flex items-center space-x-2 bg-white p-2 rounded border">
+                        <Checkbox id="illegalCutSigns" checked={inspectionData.illegalCutSigns} onCheckedChange={(c) => setInspectionData(prev => ({ ...prev, illegalCutSigns: c === true }))} />
+                        <label htmlFor="illegalCutSigns" className="text-sm font-bold text-red-600 cursor-pointer">Identificado Sinais de Corte Ilegal</label>
+                      </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Observações (opcional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Adicione observações sobre o estado da árvore, área ao redor, etc."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={4}
-                  />
+                  <Label htmlFor="notes">Parecer do Fiscal sobre a Árvore</Label>
+                  <Textarea id="notes" placeholder="Condições gerais, presença de fauna, saúde da folhagem..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
                 </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={submitValidation} className="flex-1">
-                    <CheckCircle2 className="size-4 mr-2" />
-                    Aprovar e Enviar
+                <div className="p-3 bg-slate-50 rounded border text-xs text-slate-600">
+                    <strong>Resumo do Certificado:</strong> Será anexado a esta auditoria o estado ambiental fornecido pela <em>Estação de Área</em>. 
+                    Status atual: <span className={sensorData?.alarme ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{sensorData?.alarme ? 'PERIGO' : 'SEGURO'}</span>.
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={submitValidation} className="flex-1 bg-green-600 hover:bg-green-700" size="lg">
+                    <CheckCircle2 className="size-5 mr-2" /> Finalizar e Salvar
                   </Button>
-                  <Button variant="outline" onClick={resetValidation}>
-                    Cancelar
-                  </Button>
+                  <Button variant="outline" onClick={resetTreeValidation} size="lg">Cancelar</Button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Histórico de Validações */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Histórico de Validações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {mockValidations.map((validation) => {
-                const tree = mockTrees.find(t => t.id === validation.treeId);
-                return (
-                  <div key={validation.id} className="p-4 bg-gray-50 rounded-lg border space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">{tree?.species}</p>
-                        <p className="text-xs text-gray-600">{tree?.nfcId}</p>
-                      </div>
-                      <Badge className={
-                        validation.status === 'approved' ? 'bg-green-600' :
-                        validation.status === 'rejected' ? 'bg-red-600' :
-                        'bg-yellow-600'
-                      }>
-                        {validation.status === 'approved' ? 'Aprovado' :
-                         validation.status === 'rejected' ? 'Rejeitado' :
-                         'Pendente'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs">
-                      <div className="flex items-center gap-1">
-                        {validation.nfcVerified ? (
-                          <CheckCircle2 className="size-3 text-green-600" />
-                        ) : (
-                          <XCircle className="size-3 text-red-600" />
-                        )}
-                        <span>NFC</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {validation.sensorVerified ? (
-                          <CheckCircle2 className="size-3 text-green-600" />
-                        ) : (
-                          <XCircle className="size-3 text-red-600" />
-                        )}
-                        <span>Sensor</span>
-                      </div>
-                      {validation.sensorVerified && (
-                        <div className="flex items-center gap-1">
-                          <Thermometer className="size-3 text-gray-400" />
-                          <span>{validation.temperature}°C</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                      <User className="size-3" />
-                      <span>{validation.fiscalName}</span>
-                      <span>•</span>
-                      <span>{new Date(validation.timestamp).toLocaleDateString('pt-BR')}</span>
-                    </div>
-
-                    {validation.notes && (
-                      <p className="text-xs text-gray-600 italic border-l-2 pl-2">
-                        {validation.notes}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Estatísticas */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Validações Hoje</p>
-                <p className="text-2xl font-bold">12</p>
-              </div>
-              <CheckCircle2 className="size-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Taxa de Aprovação</p>
-                <p className="text-2xl font-bold">95%</p>
-              </div>
-              <div className="size-8 rounded-full bg-green-100 flex items-center justify-center">
-                <span className="text-green-600 font-bold">✓</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Tempo Médio</p>
-                <p className="text-2xl font-bold">45s</p>
-              </div>
-              <Clock className="size-8 text-blue-600" />
-            </div>
           </CardContent>
         </Card>
       </div>

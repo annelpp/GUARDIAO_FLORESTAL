@@ -1,11 +1,11 @@
 # 🌳 Cerca Digital Inteligente
 
-Sistema completo de monitoramento e rastreabilidade de árvores nobres usando tecnologia NFC + IoT (ESP32) para preservação florestal e detecção precoce de incêndios.
+Sistema completo de monitoramento e rastreabilidade de árvores nobres usando tecnologia NFC + IoT (ESP32/Arduino) para preservação florestal e detecção precoce de incêndios.
 
 ![Status](https://img.shields.io/badge/status-active-success.svg)
-![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![React](https://img.shields.io/badge/react-18.3.1-61dafb.svg)
-![License](https://img.shields.io/badge/license-Private-red.svg)
+![Hardware](https://img.shields.io/badge/hardware-ESP32%20%7C%20C%2B%2B-green.svg)
 
 ---
 
@@ -13,12 +13,12 @@ Sistema completo de monitoramento e rastreabilidade de árvores nobres usando te
 
 - [Sobre o Projeto](#sobre-o-projeto)
 - [Funcionalidades](#funcionalidades)
+- [A Nova Arquitetura de Validação](#a-nova-arquitetura-de-validação)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Requisitos do Sistema](#requisitos-do-sistema)
 - [Instalação e Configuração](#instalação-e-configuração)
 - [Como Executar](#como-executar)
 - [Estrutura do Projeto](#estrutura-do-projeto)
-- [Roadmap](#roadmap)
 - [Hardware Necessário](#hardware-necessário)
 
 ---
@@ -27,17 +27,18 @@ Sistema completo de monitoramento e rastreabilidade de árvores nobres usando te
 
 O **Cerca Digital Inteligente** é uma solução inovadora para preservação de florestas de alto valor, combinando:
 
-- **NFC (Near Field Communication)**: Identificação individual e rastreabilidade de cada árvore
-- **ESP32**: Rede de sensores de baixo custo para monitoramento em tempo real
-- **Detecção Precoce**: Sistema de alertas de incêndio e anomalias térmicas
+- **NFC (Near Field Communication)**: Identificação individual e rastreabilidade de cada árvore.
+- **Microcontroladores (ESP32/Arduino)**: Estações base de baixo custo para monitoramento do perímetro em tempo real.
+- **Detecção Precoce Inteligente**: Sistema de alertas de incêndio e anomalias térmicas, com análise local via hardware e visualização instantânea via Web Serial API.
 
 ### O Diferencial Único
 
-**Validação em Duas Etapas:**
-1. **Prova Física (NFC)**: Tag NFC com dados cadastrais da árvore
-2. **Prova Viva (Sensores)**: Conexão Bluetooth com ESP32 para validar que a árvore está "viva" e no local correto
+**Auditoria Simultânea de Perímetro e Indivíduo:**
+Nós separamos a monitorização do ambiente da validação da árvore, criando um processo duplo e robusto:
+1. **Prova Viva (Estação de Área IoT)**: O fiscal conecta o sistema à uma base ESP32/Arduino via USB, que monitora continuamente todo o perímetro da área inspecionada (temperatura, gás e chamas) através de um *Monitor Serial em tempo real*.
+2. **Prova Física (NFC + Check-list Humano)**: Enquanto a estação monitora a área, o fiscal realiza a ronda livremente, "bipando" tags NFC para atestar a localização e inserindo dados de saúde de árvores específicas.
 
-A identidade só é válida se o sensor confirmar os dados em tempo real!
+A validação de uma árvore só é atestada se as informações físicas dela baterem e se a *Estação de Área* afirmar que o ambiente ao redor está seguro no momento da inspeção!
 
 ---
 
@@ -53,52 +54,31 @@ A identidade só é válida se o sensor confirmar os dados em tempo real!
 - Mapa interativo com localização das árvores
 - Gráficos de temperatura histórica
 - Alertas ativos e status do sistema
-- Estatísticas de sensores ativos
 
 ### 🌲 Cadastro de Árvores
 - Registro completo de novas árvores
-- Sistema de busca e filtros
-- Gerenciamento de dados cadastrais
-- Visualização de informações detalhadas
-- Histórico de cada árvore
+- Sistema de busca, filtros e gerenciamento de dados cadastrais
+- Visualização de informações detalhadas e histórico
 
-### ✅ Validação em Campo
-- Interface mobile-friendly para fiscais
-- Simulação de leitura NFC
-- Conexão automática com sensores ESP32
-- **Formulário completo de inspeção:**
-  - Condição do tronco
-  - Saúde da folhagem
-  - Estado do solo
-  - Integridade da tag NFC
-  - Checklist de segurança (danos, pragas, corte ilegal)
-  - Nível de risco de incêndio
-  - Medições físicas (diâmetro)
-  - Condições ambientais (clima, umidade)
-  - Captura de fotos
-  - Observações gerais
-- Histórico de validações
-- Estatísticas de aprovação
+### ✅ Central de Operações em Campo (Validação)
+**O coração do sistema!** Uma interface dupla para o fiscal em campo:
+- **Painel IoT (Estação de Área)**
+  - Conexão nativa com a placa via Web Serial API diretamente do navegador Chrome/Edge.
+  - Correção implementada de DTR/RTS (Sem travamentos de reset no ESP32).
+  - Terminal de console de monitoramento rodando *live*, com parser inteligente e scroll automático.
+  - Cartões de status dinâmicos. A temperatura muda de cor indicando níveis de risco (Laranja >= 32°C, Vermelho >= 40°C).
+- **Painel Humano (Auditoria NFC)**
+  - Fluxo assíncrono. O fiscal pode validar inúmeras árvores sem desconectar o Arduino.
+  - Formulário completo: Condição do tronco, folhagem, integridade da Tag, checklist de corte ilegal e parecer técnico.
+  - Geração de Certificado combinando o Status Humano e o Status do Perímetro.
 
 ### 🚨 Central de Alertas
-- Lista de alertas em tempo real
-- Filtros por tipo e severidade
-- Protocolos de resposta por tipo de alerta:
-  - Incêndio
-  - Temperatura elevada
-  - Sensor offline
-  - Intrusão
-- Histórico de alertas resolvidos
+- Lista de alertas em tempo real e filtros por tipo e severidade
+- Protocolos de resposta por tipo de alerta: Incêndio, Temperatura Elevada, Sensor Offline, Intrusão.
 
 ### 📈 Relatórios e Analytics
-- KPIs principais do sistema
-- Gráficos de crescimento
-- Distribuição de alertas
-- Estado de saúde das árvores
-- Top espécies cadastradas
-- Análise por tipo de manejo
-- Resumo executivo
-- Exportação de relatórios (PDF, Excel)
+- KPIs principais do sistema (crescimento, distribuição de alertas, saúde das árvores)
+- Resumo executivo e exportação de relatórios
 
 ---
 
@@ -107,7 +87,7 @@ A identidade só é válida se o sensor confirmar os dados em tempo real!
 ### Frontend
 - **React 18.3.1** - Biblioteca JavaScript para interfaces
 - **TypeScript** - Tipagem estática
-- **Vite 6.3.5** - Build tool e dev server
+- **Vite 6.3.5** - Build tool e dev server super rápido
 - **React Router 7.13.0** - Navegação entre páginas
 
 ### UI/UX
@@ -118,45 +98,28 @@ A identidade só é válida se o sensor confirmar os dados em tempo real!
 
 ### Mapas e Geolocalização
 - **Leaflet** - Biblioteca JS open-source para mapas interativos
-- **React-Leaflet (v4.2.1)** - Componentes React para o Leaflet (versão estável para compatibilidade com React 18)
+- **React-Leaflet (v4.2.1)** - Componentes React para o Leaflet
 
-### Componentes e Utilitários
-- **class-variance-authority** - Variantes de componentes
-- **clsx** - Utilitário para classes condicionais
-- **tailwind-merge** - Merge inteligente de classes Tailwind
-- **date-fns** - Manipulação de datas
-- **sonner** - Sistema de notificações toast
-
-### Animações
-- **Motion (Framer Motion) 12.23.24** - Animações fluidas
+### Hardware & Integração
+- **Web Serial API**: Integração nativa navegador-hardware para captura de dados do ESP32 via cabo USB, parseamento de JSON e tratamento de logs.
+- **C++/PlatformIO**: Código fonte do microcontrolador utilizando bibliotecas da Adafruit (`DHT sensor library`, `Adafruit Unified Sensor`).
 
 ---
 
 ## 💻 Requisitos do Sistema
 
 ### Software Necessário
-
-- **Node.js**: versão 18.x ou superior
+- **Node.js**: versão 22.x ou superior
 - **pnpm**: versão 8.x ou superior (gerenciador de pacotes recomendado)
-- **Git**: para clonar o repositório
-- **Navegador moderno**: Chrome, Firefox, Edge ou Safari (última versão)
+- **Navegador Moderno**: Google Chrome ou Microsoft Edge (obrigatório para acesso à Web Serial API na página de validação).
 
 ### Verificar Instalações
-
 ```bash
-# Verificar versão do Node.js
-node --version
-# Deve retornar: v18.x.x ou superior
-
-# Verificar versão do pnpm
-pnpm --version
-# Deve retornar: 8.x.x ou superior
-
-# Verificar versão do Git
+node --version # Deve retornar: v22.x.x ou superior
+pnpm --version # Deve retornar: 8.x.x ou superior
 git --version
 
 ### Instalar pnpm (se necessário)
-
 ```bash
 # Via npm
 npm install -g pnpm

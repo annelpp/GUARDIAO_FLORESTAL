@@ -221,7 +221,7 @@ export default function LandingPage() {
             <span className="text-white text-xl font-bold uppercase tracking-widest">Guardião Florestal</span>
           </div>
           <p className="mb-4">Desenvolvido com 💚 para preservação e manejo das nossas florestas nobres.</p>
-          <div className="text-sm">© 2026 Cerca Digital Inteligente. Todos os direitos reservados.</div>
+          <div className="text-sm">©️ 2026 Cerca Digital Inteligente. Todos os direitos reservados.</div>
         </div>
       </footer>
     </div>
