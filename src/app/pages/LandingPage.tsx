@@ -10,9 +10,9 @@ import { Badge } from '@/app/components/ui/badge';
 import { motion } from 'motion/react';
 
 // Importação das imagens anexadas
-import imgHeroPaisagem from '@/app/assets/images/paisagem.PNG';
-import imgProblemaArvore1 from '@/app/assets/images/arvore1.PNG';
-import imgDiferencialConnect from '@/app/assets/images/arvore_connect.PNG';
+import imgHeroPaisagem from '@/app/assets/images/paisagem.png';
+import imgProblemaArvore1 from '@/app/assets/images/arvore1.png';
+import imgDiferencialConnect from '@/app/assets/images/arvore_connect.png';
 
 export default function LandingPage() {
   return (
