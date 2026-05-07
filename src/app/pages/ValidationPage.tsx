@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { 
-  Smartphone, CheckCircle2, MapPin, Thermometer, 
+  Smartphone, CheckCircle2, MapPin, Thermometer,
   Clock, User, FileText, AlertTriangle, Droplets, 
   Wind, Usb, ShieldCheck, Flame, Info, Terminal, Activity
 } from 'lucide-react';
@@ -24,6 +25,12 @@ interface SensorData {
 }
 
 export default function ValidationPage() {
+  // ==========================================
+  // ESTADO: ROTAS E URL PARAMETERS (NFC)
+  // ==========================================
+  const [searchParams] = useSearchParams(); // <-- Captura os parâmetros
+  const treeIdFromUrl = searchParams.get('treeId'); // <-- Pega especificamente o "treeId"
+
   // ==========================================
   // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO)
   // ==========================================
@@ -60,7 +67,13 @@ export default function ValidationPage() {
     if (savedTrees) setLocalTrees(JSON.parse(savedTrees));
   }, []);
 
-  // Auto-scroll do terminal
+  useEffect(() => {
+    if (treeIdFromUrl && localTrees.some(t => t.id === treeIdFromUrl)) {
+      setSelectedTreeId(treeIdFromUrl);
+    }
+  }, [treeIdFromUrl, localTrees]);
+
+
   useEffect(() => {
     if (logEndRef.current) {
       logEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -170,11 +183,14 @@ export default function ValidationPage() {
       setNfcVerified(true);
       setTreeStep('inspection');
     }, 1500);
-  };
+  };<div className="space-y-2">
 
   const resetTreeValidation = () => {
     setTreeStep('idle');
-    setSelectedTreeId(null);
+    // Só reseta a árvore se ELA NÃO VEIO PELA URL NFC ATENÇÃO AQUI HEIN
+    if (!treeIdFromUrl) {
+      setSelectedTreeId(null);
+    }
     setNfcVerified(false);
     setNotes('');
     setInspectionData({
@@ -385,7 +401,19 @@ export default function ValidationPage() {
 
             <div className="space-y-2">
               <Label>Árvore Alvo da Inspeção</Label>
-              <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle'}>
+              
+              {/* <-- NOVO AVISO VISUAL ADICIONADO --> */}
+              {/* Se veio via URL, a gente informa visualmente o fiscal que a árvore foi selecionada via NFC */}
+              {treeIdFromUrl ? (
+                <div className="p-3 border rounded bg-green-50 text-green-800 flex items-center gap-2">
+                  <Smartphone className="size-4" /> 
+                  <span className="font-semibold">Selecionada via Tag NFC</span>
+                </div>
+              ) : null}
+              {/* <--------------------------------> */}
+
+              {/* <-- ALTERAÇÃO NO DISABLED: Adicionado || !!treeIdFromUrl --> */}
+              <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle' || !!treeIdFromUrl}>
                 <SelectTrigger><SelectValue placeholder="Selecione a árvore encontrada..." /></SelectTrigger>
                 <SelectContent>
                   {localTrees.map(t => <SelectItem key={t.id} value={t.id}>{t.species} ({t.nfcId})</SelectItem>)}
