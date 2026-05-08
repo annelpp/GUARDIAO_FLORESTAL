@@ -14,10 +14,11 @@ export default defineConfig({
       manifest: {
         name: 'Guardião Florestal - Cerca Digital',
         short_name: 'Guardião',
+        start_url: '/validation', 
+        display: 'standalone',
         description: 'Monitoramento IoT e Rastreabilidade NFC para Preservação Florestal',
         theme_color: '#059669', 
         background_color: '#ffffff',
-        display: 'standalone',
         icons: [
           {
             src: 'pwa-192x192.png',
