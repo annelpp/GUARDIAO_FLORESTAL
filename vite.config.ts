@@ -8,16 +8,14 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Configuração do Progressive Web App (PWA)
     VitePWA({
       registerType: 'autoUpdate',
-      // Inclui ícones e sons no cache inicial
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'sounds/*.mp3'],
       manifest: {
         name: 'Guardião Florestal - Cerca Digital',
         short_name: 'Guardião',
         description: 'Monitoramento IoT e Rastreabilidade NFC para Preservação Florestal',
-        theme_color: '#059669', // Verde Esmeralda do Guardião
+        theme_color: '#059669', 
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
@@ -35,15 +33,13 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Padrões de ficheiros que devem ser guardados para uso offline
-        // Incluímos explicitamente .mp3 para garantir o feedback sonoro na mata
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp3}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp3}'],
+        maximumFileSizeToCacheInBytes: 5000000 
       }
     })
   ],
   build: {
-    // Aumentamos o limite para evitar avisos de chunk, já que o app está a crescer
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 3000,
   },
   resolve: {
     alias: {
@@ -51,6 +47,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Suporte a importação de ficheiros de dados e vetores
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
