@@ -1,12 +1,13 @@
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
-// Importe o ThemeProvider (ajuste o caminho dependendo de onde você criou o arquivo)
 import { ThemeProvider } from './contexts/ThemeContext'; 
+// 1. Importar o Toaster
+import { Toaster } from 'sonner';
 
 export default function App() {
   return (
-    // O ThemeProvider agora abraça toda a sua aplicação e suas rotas
     <ThemeProvider>
+      <Toaster richColors position="top-center" closeButton />
       <RouterProvider router={router} />
     </ThemeProvider>
   );

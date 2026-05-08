@@ -28,8 +28,13 @@ export default function ValidationPage() {
   // ==========================================
   // ESTADO: ROTAS E URL PARAMETERS (NFC)
   // ==========================================
-  const [searchParams] = useSearchParams(); // <-- Captura os parâmetros
-  const treeIdFromUrl = searchParams.get('treeId'); // <-- Pega especificamente o "treeId"
+  const [searchParams] = useSearchParams(); 
+  const treeIdFromUrl = searchParams.get('treeId'); 
+  const playFeedback = (type: 'success' | 'error') => {
+  const audio = new Audio(`/sounds/${type}.mp3`);
+  audio.volume = 0.5;
+  audio.play().catch(() => console.log("Áudio aguardando interação do usuário."));
+};
 
   // ==========================================
   // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO)
@@ -139,32 +144,49 @@ export default function ValidationPage() {
           const trimmedLine = line.trim();
           if (trimmedLine) {
             const timestamp = new Date().toLocaleTimeString('pt-BR');
-            let logMsg = trimmedLine; // Começa com o texto cru, caso não seja JSON
+            let logMsg = trimmedLine;
 
-            // Se for um pacote JSON, nós interceptamos e formatamos bonito!
             if (trimmedLine.startsWith('{') && trimmedLine.endsWith('}')) {
               try {
                 const parsed = JSON.parse(trimmedLine);
                 if (parsed.temp !== undefined && parsed.umidade !== undefined) {
+                  
+                  // ==========================================
+                  // LÓGICA DE FEEDBACK (NOVO)
+                  // ==========================================
+                  // Dispara o alerta se o alarme mudar de 'false' para 'true'
+                  if (parsed.alarme && !sensorData?.alarme) {
+                    playFeedback('error');
+                    toast.error("PERIGO DETECTADO!", {
+                      description: parsed.msg,
+                      duration: Infinity, // Mantém na tela até o fiscal fechar
+                    });
+                  } 
+                  // Dispara um aviso sonoro leve se a temperatura subir demais (Atenção)
+                  else if (parsed.temp >= 32 && (!sensorData || sensorData.temp < 32)) {
+                    playFeedback('error'); // Ou um som de 'warning' se você tiver
+                    toast.warning("Alerta de Calor", {
+                      description: "A temperatura no perímetro ultrapassou 32°C.",
+                    });
+                  }
+
                   setSensorData(parsed);
                   
-                  // Lógica de ícones para o log
                   const icone = parsed.alarme ? '⚠️ PERIGO' : (parsed.temp >= 32 ? '⚠️ ATENÇÃO' : ' OK');
                   const msgTratada = parsed.alarme ? parsed.msg : (parsed.temp >= 32 ? "Temperatura necessita atenção" : parsed.msg);
                   
-                  // Formatação amigável para o olho humano 
                   logMsg = `Temp: ${parsed.temp.toFixed(1)}°C | Umi: ${parsed.umidade.toFixed(0)}% | Gás: ${parsed.gas} | ${icone} (${msgTratada})`;
                 }
               } catch (err) {
-                // Se der erro ao ler o JSON, ignora e imprime o texto cru
+                // Erro silencioso no parse
               }
             }
 
-            // Adiciona a linha (formatada ou crua) na telinha preta
             setSerialLogs(prev => [...prev.slice(-49), `[${timestamp}] ${logMsg}`]);
           }
         }
       }
+
     } catch (err: any) {
       if (err.message.includes("No port selected")) {
         setSerialError("Seleção cancelada pelo usuário.");
@@ -193,13 +215,24 @@ export default function ValidationPage() {
   // LÓGICA DA ÁRVORE (NFC + INSPEÇÃO)
   // ==========================================
   const startTreeValidation = () => {
-    if (!fiscalName || !fiscalId || !selectedTreeId) return;
+  if (!fiscalName || !fiscalId || !selectedTreeId) return;
+  
+  if (treeIdFromUrl) {
+    setNfcVerified(true);
+    setTreeStep('inspection');
+    // ADICIONE AQUI:
+    playFeedback('success');
+    toast.success("Acesso via NFC detectado!");
+  } else {
     setTreeStep('nfc');
     setTimeout(() => {
       setNfcVerified(true);
       setTreeStep('inspection');
+      playFeedback('success');
+      toast.success("Tag NFC lida com sucesso!");
     }, 1500);
-  };
+  }
+};
 
   const resetTreeValidation = () => {
     setTreeStep('idle');
@@ -226,7 +259,18 @@ export default function ValidationPage() {
     ) {
       finalStatus = 'rejected';
     }
-    
+
+    if (finalStatus === 'approved') {
+    playFeedback('success');
+    toast.success("Certificado Emitido!", {
+      description: "Árvore aprovada e dados salvos no sistema."
+    });
+  } else {
+    playFeedback('error'); // Caso queira um som de alerta
+    toast.error("Alerta de Irregularidade!", {
+      description: "Relatório salvo com status de REJEITADO."
+    });
+  } 
     alert(`Certificado Emitido! Status: ${finalStatus === 'approved' ? 'APROVADA ✅' : 'REJEITADA ❌'}`);
     resetTreeValidation();
   };
@@ -481,8 +525,20 @@ export default function ValidationPage() {
             {/* === FIM DO BLOCO DE REPORT === */}
 
             {treeStep === 'idle' && (
-              <Button onClick={startTreeValidation} className="w-full bg-green-600 hover:bg-green-700 h-12 text-md" disabled={!fiscalName || !fiscalId || !selectedTreeId}>
-                <Smartphone className="size-5 mr-2" /> Ler Identidade (NFC)
+              <Button 
+                onClick={startTreeValidation} 
+                className="w-full bg-green-600 hover:bg-green-700 h-12 text-md shadow-md transition-all" 
+                disabled={!fiscalName || !fiscalId || !selectedTreeId}
+              >
+                {treeIdFromUrl ? (
+                  <>
+                    <CheckSquare className="size-5 mr-2" /> Iniciar Auditoria
+                  </>
+                ) : (
+                  <>
+                    <Smartphone className="size-5 mr-2 animate-pulse" /> Ler Identidade Físicamente (NFC)
+                  </>
+                )}
               </Button>
             )}
 

@@ -41,7 +41,7 @@ export interface ValidationRecord {
   status: 'approved' | 'rejected' | 'pending';
 }
 
-// Mock data
+// Mock datas
 export const mockTrees: Tree[] = [
   {
     id: 'tree-001',
