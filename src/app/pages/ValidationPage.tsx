@@ -85,11 +85,25 @@ export default function ValidationPage() {
   const [nfcVerified, setNfcVerified] = useState(false);
 
   const [inspectionData, setInspectionData] = useState({
-    trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
-    visualDamage: false, pestsSigns: false, illegalCutSigns: false,
-    fireRiskLevel: '', currentDiameter: '', weatherCondition: '',
-    soilMoisture: '', photosCount: 0,
+  trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
+  visualDamage: false, pestsSigns: false, illegalCutSigns: false,
+  fireRiskLevel: '', currentDiameter: '', currentHeight: '', weatherCondition: '',
+  soilMoisture: '', photosCount: 0,
   });
+
+  // Lógica para Cálculo de Biomassa Acima do Solo (AGB - Above Ground Biomass)
+  // Utiliza uma fórmula genérica simplificada: 0.05 * (Diâmetro^2) * Altura
+  const calcularBiomassa = (diametroCm: string, alturaM: string) => {
+    const d = parseFloat(diametroCm);
+    const h = parseFloat(alturaM);
+    if (isNaN(d) || isNaN(h) || d <= 0 || h <= 0) return null;
+    
+    const biomassaKg = 0.05 * Math.pow(d, 2) * h;
+    // Retorna em Toneladas (t) se for muito grande, ou Quilogramas (kg)
+    return biomassaKg > 1000 
+      ? `${(biomassaKg / 1000).toFixed(2)} t` 
+      : `${biomassaKg.toFixed(2)} kg`;
+  };
 
   const [localTrees, setLocalTrees] = useState<Tree[]>(mockTrees);
   const fullTreeData = localTrees.find(t => t.id === selectedTreeId);
@@ -505,7 +519,7 @@ export default function ValidationPage() {
 
             {/* === NOVO BLOCO: REPORT COMPLETO DA ÁRVORE === */}
             {selectedTreeId && fullTreeData && (
-              <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+              <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300 shadow-sm">
                 <div className="flex items-center justify-between border-b pb-2 border-slate-200">
                     <h3 className="font-bold text-slate-700 flex items-center gap-2">
                         <Info className="size-4 text-blue-500"/> Ficha Técnica da Espécie
@@ -515,11 +529,59 @@ export default function ValidationPage() {
                     </Badge>
                 </div>
 
-                <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2 text-sm mt-2">
                   <div className="flex flex-col">
                     <span className="text-slate-500 text-[10px] uppercase font-bold">Espécie</span>
-                    <span className="font-medium">{fullTreeData.species}</span>
+                    <span className="font-medium truncate" title={fullTreeData.species}>{fullTreeData.species}</span>
                   </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Idade Estimada</span>
+                    {/* Usando um fallback caso a idade não exista no mock ainda */}
+                    <span className="font-medium">{fullTreeData.age || '12 anos'}</span> 
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">NFC Tag</span>
+                    <span className="font-medium text-blue-600">{fullTreeData.nfcId}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Coordenadas</span>
+                    <span className="font-medium flex items-center gap-1"><MapPin className="size-3 text-slate-400"/> {fullTreeData.location}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Dimensões Base</span>
+                    <span className="font-medium">
+                      D: {fullTreeData.baseDiameter || '45cm'} | A: {fullTreeData.baseHeight || '15m'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Última Auditoria</span>
+                    <span className="font-medium flex items-center gap-1"><Clock className="size-3 text-slate-400"/> {fullTreeData.lastValidation}</span>
+                  </div>
+                </div>
+
+                {/* SEÇÃO DE DADOS AMBIENTAIS E BIOMASSA HISTÓRICA */}
+                <div className="mt-3 p-3 bg-white rounded border border-slate-200 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Contexto Ambiental Local</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                            <Thermometer className="size-4 text-orange-500"/>
+                            {/* Integra o sensor IoT ao vivo se conectado, caso contrário mostra "Desconhecido" ou histórico */}
+                            <span className="font-semibold text-slate-700">
+                              {sensorData?.temp !== undefined ? `${sensorData.temp.toFixed(1)}°C (Live)` : 'Ambiente Indisponível'}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Activity className="size-4 text-green-600"/>
+                            <span className="font-semibold text-slate-700">
+                              Biomassa Est.: {calcularBiomassa(fullTreeData.baseDiameter || '45', fullTreeData.baseHeight || '15') || '--'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            )}
                   <div className="flex flex-col">
                     <span className="text-slate-500 text-[10px] uppercase font-bold">Coordenadas</span>
                     <span className="font-medium flex items-center gap-1"><MapPin className="size-3"/> {fullTreeData.location}</span>
@@ -580,6 +642,7 @@ export default function ValidationPage() {
                     <AlertTriangle className="size-5 text-yellow-500"/> Check-list Humano
                 </h3>
                 
+                {/* 1. SINAIS DE INFRAÇÃO */}
                 <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                   <p className="font-semibold text-sm text-yellow-800 mb-3">Sinais de Infrações</p>
                   <div className="space-y-3">
@@ -590,16 +653,56 @@ export default function ValidationPage() {
                   </div>
                 </div>
 
+                {/* 2. NOVO: BLOCO DE BIOMETRIA E BIOMASSA */}
+                <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-4 shadow-sm">
+                  <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                    <Activity className="size-4 text-green-600"/> Biometria e Cálculo de Biomassa Atual
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="diameter">Diâmetro do Tronco (cm) - DAP</Label>
+                      <Input 
+                        id="diameter" 
+                        type="number" 
+                        placeholder="Ex: 50" 
+                        value={inspectionData.currentDiameter} 
+                        onChange={(e) => setInspectionData(prev => ({ ...prev, currentDiameter: e.target.value }))} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="height">Altura Estimada (m)</Label>
+                      <Input 
+                        id="height" 
+                        type="number" 
+                        placeholder="Ex: 18" 
+                        value={inspectionData.currentHeight} 
+                        onChange={(e) => setInspectionData(prev => ({ ...prev, currentHeight: e.target.value }))} 
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* VISUALIZADOR DE BIOMASSA EM TEMPO REAL */}
+                  <div className="p-3 bg-green-50 rounded border border-green-200 flex justify-between items-center">
+                    <span className="text-sm text-green-800 font-medium">Biomassa Calculada (Atual):</span>
+                    <span className="text-lg font-bold text-green-700">
+                      {calcularBiomassa(inspectionData.currentDiameter, inspectionData.currentHeight) || 'Aguardando medidas...'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. PARECER DO FISCAL */}
                 <div className="space-y-2">
                   <Label htmlFor="notes">Parecer do Fiscal sobre a Árvore</Label>
                   <Textarea id="notes" placeholder="Condições gerais, presença de fauna, saúde da folhagem..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
                 </div>
 
+                {/* 4. RESUMO DO AMBIENTE IOT */}
                 <div className="p-3 bg-slate-50 rounded border text-xs text-slate-600">
                     <strong>Resumo do Certificado:</strong> Será anexado a esta auditoria o estado ambiental fornecido pela <em>Estação de Área</em>. 
                     Status atual: <span className={sensorData?.alarme ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{sensorData?.alarme ? 'PERIGO' : 'SEGURO'}</span>.
                 </div>
 
+                {/* 5. AÇÕES DE FINALIZAÇÃO */}
                 <div className="flex gap-2 pt-2">
                   <Button onClick={submitValidation} className="flex-1 bg-green-600 hover:bg-green-700" size="lg">
                     <CheckCircle2 className="size-5 mr-2" /> Finalizar e Salvar
