@@ -42,10 +42,23 @@ export default function ValidationPage() {
   const logEndRef = useRef<HTMLDivElement>(null);
   const readerRef = useRef<any>(null);
   const portRef = useRef<any>(null);
+  const auditoriaRef = useRef<HTMLDivElement>(null);
+
+  // === EFEITO DE ROLAGEM AUTOMÁTICA ===
+  // Se a URL trouxer o ID da tag NFC, a tela rola suavemente para baixo
+  useEffect(() => {
+    if (treeIdFromUrl && auditoriaRef.current) {
+      // Usamos um setTimeout pequeno para garantir que a tela terminou de carregar no celular
+      setTimeout(() => {
+        auditoriaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 400); 
+    }
+  }, [treeIdFromUrl]);
 
   // ==========================================
   // ESTADO 2: AUDITORIA DE ÁRVORE (NFC + HUMANO)
   // ==========================================
+  
   const [treeStep, setTreeStep] = useState<'idle' | 'nfc' | 'inspection'>('idle');
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fiscalName, setFiscalName] = useState('');
@@ -80,6 +93,8 @@ export default function ValidationPage() {
       logEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [serialLogs]);
+
+  
 
   // ==========================================
   // LÓGICA DO ARDUINO (ÁREA)
@@ -381,7 +396,8 @@ export default function ValidationPage() {
         {/* ========================================== */}
         {/* COLUNA DIREITA: AUDITORIA DE ÁRVORE (NFC) */}
         {/* ========================================== */}
-        <Card className="border-green-200 shadow-sm">
+        <div ref={auditoriaRef} className="scroll-mt-24">
+          <Card className="border-green-200 shadow-sm">
           <CardHeader className="bg-green-600 text-white rounded-t-lg pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="size-5"/> Auditoria Individual (Árvores)
@@ -516,7 +532,8 @@ export default function ValidationPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </div> 
       </div>
     </div>
   );
