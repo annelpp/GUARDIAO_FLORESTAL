@@ -261,8 +261,10 @@ export default function ValidationPage() {
     });
   };
 
+  // ==========================================
+  // FINALIZAÇÃO DA AUDITORIA
+  // ==========================================
   const submitValidation = () => {
-
     let finalStatus = 'approved';
     
     if (
@@ -272,34 +274,27 @@ export default function ValidationPage() {
       finalStatus = 'rejected';
     }
 
-    if (finalStatus === 'approved') {
-      playFeedback('success');
-      toast.success("Certificado Emitido!", {
-        description: "Árvore aprovada e dados salvos no sistema.",
-        duration: 4000,
-      });
-    } else {
-      playFeedback('error');
-      toast.error("Alerta de Irregularidade!", {
-        description: "Relatório salvo com status de REJEITADO.",
-        duration: 5000,
-      });
-    }
-    
     try {
-    // Tenta o feedback, mas não morre se falhar
-    playFeedback(finalStatus === 'approved' ? 'success' : 'error');
-    toast.success("Processado!");
-  } catch (e) {
-    console.warn("Feedback falhou, mas continuando...", e);
-  } finally {
-    // O finally SEMPRE executa, garantindo que o formulário feche
-    resetTreeValidation();
-  }
-};
-
-    resetTreeValidation(); 
-};
+      if (finalStatus === 'approved') {
+        playFeedback('success');
+        toast.success("Certificado Emitido!", {
+          description: "Árvore aprovada e dados salvos no sistema.",
+          duration: 4000,
+        });
+      } else {
+        playFeedback('error');
+        toast.error("Alerta de Irregularidade!", {
+          description: "Relatório salvo com status de REJEITADO.",
+          duration: 5000,
+        });
+      }
+    } catch (e) {
+      console.warn("Falha no feedback:", e);
+    } finally {
+      // Garante o fechamento do formulário
+      resetTreeValidation();
+    }
+  }; // <--- Fecha submitValidation
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -618,5 +613,5 @@ export default function ValidationPage() {
         </div> 
       </div>
     </div>
-  );
-}
+  ); 
+} 
