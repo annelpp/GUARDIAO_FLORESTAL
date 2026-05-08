@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router';
 import { 
   Smartphone, CheckCircle2, MapPin, Thermometer,
   Clock, User, FileText, AlertTriangle, Droplets, 
-  Wind, Usb, ShieldCheck, Flame, Info, Terminal, Activity
+  Wind, Usb, ShieldCheck, Flame, Info, Terminal, Activity,
+  CheckSquare
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
