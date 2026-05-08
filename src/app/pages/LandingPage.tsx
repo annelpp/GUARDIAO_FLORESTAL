@@ -190,9 +190,13 @@ export default function LandingPage() {
       </section>
 
       {/* --- SEÇÃO: FUNCIONALIDADES --- */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-950 transition-colors">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-16">Funcionalidades do Sistema</h2>
+          {/* Adicionamos text-gray-900 e dark:text-white aqui */}
+          <h2 className="text-3xl font-bold text-center mb-16 text-gray-900 dark:text-white">
+            Funcionalidades do Sistema
+          </h2>
+          
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {[
               { icon: Map, title: "Geolocalização", desc: "Mapa interativo com a posição exata de cada árvore monitorada." },
@@ -200,10 +204,11 @@ export default function LandingPage() {
               { icon: LineChart, title: "Analytics", desc: "Gráficos de histórico de temperatura e saúde individual." },
               { icon: Database, title: "Inventário Digital", desc: "Banco de dados completo e histórico auditável por árvore." }
             ].map((f, i) => (
-              <div key={i} className="p-6 rounded-2xl border bg-white hover:border-green-300 hover:shadow-md transition-all group">
+              // Ajustamos o card para respeitar o Dark Mode também
+              <div key={i} className="p-6 rounded-2xl border bg-white dark:bg-gray-900 dark:border-gray-800 hover:border-green-300 dark:hover:border-green-500 hover:shadow-md transition-all group">
                 <f.icon className="size-10 text-green-600 mb-4 group-hover:scale-110 transition-transform" />
-                <h4 className="font-bold mb-2 text-gray-900">{f.title}</h4>
-                <p className="text-gray-600 text-sm">{f.desc}</p>
+                <h4 className="font-bold mb-2 text-gray-900 dark:text-gray-100">{f.title}</h4>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">{f.desc}</p>
               </div>
             ))}
           </div>
