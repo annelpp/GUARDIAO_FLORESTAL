@@ -109,7 +109,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="size-5" />
-              Localização das Árvores
+              Localização das Árvore
             </CardTitle>
           </CardHeader>
           <CardContent>
