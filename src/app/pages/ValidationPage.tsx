@@ -61,7 +61,8 @@ export default function ValidationPage() {
   });
 
   const [localTrees, setLocalTrees] = useState<Tree[]>(mockTrees);
-
+  const fullTreeData = localTrees.find(t => t.id === selectedTreeId);
+  
   useEffect(() => {
     const savedTrees = localStorage.getItem('@CercaDigital:trees');
     if (savedTrees) setLocalTrees(JSON.parse(savedTrees));
@@ -402,17 +403,17 @@ export default function ValidationPage() {
             <div className="space-y-2">
               <Label>Árvore Alvo da Inspeção</Label>
               
-              {/* <-- NOVO AVISO VISUAL ADICIONADO --> */}
-              {/* Se veio via URL, a gente informa visualmente o fiscal que a árvore foi selecionada via NFC */}
-              {treeIdFromUrl ? (
-                <div className="p-3 border rounded bg-green-50 text-green-800 flex items-center gap-2">
-                  <Smartphone className="size-4" /> 
-                  <span className="font-semibold">Selecionada via Tag NFC</span>
+              {/* Banner de Confirmação NFC */}
+              {treeIdFromUrl && (
+                <div className="p-3 border rounded-lg bg-green-50 text-green-800 flex items-center justify-between mb-2 border-green-200">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="size-4" /> 
+                    <span className="font-semibold text-sm">Identidade Confirmada via NFC</span>
+                  </div>
+                  <Badge className="bg-green-600">ID: {selectedTreeId}</Badge>
                 </div>
-              ) : null}
-              {/* <--------------------------------> */}
-
-              {/* <-- ALTERAÇÃO NO DISABLED: Adicionado || !!treeIdFromUrl --> */}
+              )}
+              
               <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle' || !!treeIdFromUrl}>
                 <SelectTrigger><SelectValue placeholder="Selecione a árvore encontrada..." /></SelectTrigger>
                 <SelectContent>
@@ -420,6 +421,48 @@ export default function ValidationPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* === NOVO BLOCO: REPORT COMPLETO DA ÁRVORE === */}
+            {selectedTreeId && fullTreeData && (
+              <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+                <div className="flex items-center justify-between border-b pb-2 border-slate-200">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                        <Info className="size-4 text-blue-500"/> Ficha Técnica da Espécie
+                    </h3>
+                    <Badge variant={fullTreeData.status === 'healthy' ? 'outline' : 'destructive'} className={fullTreeData.status === 'healthy' ? 'bg-green-100 text-green-700 border-green-200' : ''}>
+                        {fullTreeData.status === 'healthy' ? 'Saudável' : 'Atenção'}
+                    </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-y-3 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Espécie</span>
+                    <span className="font-medium">{fullTreeData.species}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Coordenadas</span>
+                    <span className="font-medium flex items-center gap-1"><MapPin className="size-3"/> {fullTreeData.location}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">Última Auditoria</span>
+                    <span className="font-medium flex items-center gap-1"><Clock className="size-3"/> {fullTreeData.lastValidation}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold">NFC Tag</span>
+                    <span className="font-medium text-blue-600">{fullTreeData.nfcId}</span>
+                  </div>
+                </div>
+
+                <div className="mt-2 p-2 bg-white rounded border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Histórico Recente</p>
+                    <ul className="text-[11px] space-y-1 text-slate-600">
+                        <li className="flex items-center gap-2">🟢 12/03/24 - Nenhuma anomalia detectada.</li>
+                        <li className="flex items-center gap-2">🟡 05/02/24 - Stress hídrico leve detectado.</li>
+                    </ul>
+                </div>
+              </div>
+            )}
+            {/* === FIM DO BLOCO DE REPORT === */}
 
             {treeStep === 'idle' && (
               <Button onClick={startTreeValidation} className="w-full bg-green-600 hover:bg-green-700 h-12 text-md" disabled={!fiscalName || !fiscalId || !selectedTreeId}>
