@@ -285,7 +285,18 @@ export default function ValidationPage() {
         duration: 5000,
       });
     }
-
+    
+    try {
+    // Tenta o feedback, mas não morre se falhar
+    playFeedback(finalStatus === 'approved' ? 'success' : 'error');
+    toast.success("Processado!");
+  } catch (e) {
+    console.warn("Feedback falhou, mas continuando...", e);
+  } finally {
+    // O finally SEMPRE executa, garantindo que o formulário feche
+    resetTreeValidation();
+  }
+};
 
     resetTreeValidation(); 
 };
