@@ -183,7 +183,7 @@ export default function ValidationPage() {
       setNfcVerified(true);
       setTreeStep('inspection');
     }, 1500);
-  };<div className="space-y-2">
+  };
 
   const resetTreeValidation = () => {
     setTreeStep('idle');
