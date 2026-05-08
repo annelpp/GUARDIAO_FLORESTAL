@@ -2,21 +2,22 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa' // 1. Importar o plugin
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // 2. Configuração do PWA
+    // Configuração do Progressive Web App (PWA)
     VitePWA({
       registerType: 'autoUpdate',
+      // Inclui ícones e sons no cache inicial
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'sounds/*.mp3'],
       manifest: {
         name: 'Guardião Florestal - Cerca Digital',
         short_name: 'Guardião',
         description: 'Monitoramento IoT e Rastreabilidade NFC para Preservação Florestal',
-        theme_color: '#059669', // Cor verde do seu sistema
+        theme_color: '#059669', // Verde Esmeralda do Guardião
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
@@ -34,16 +35,22 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Garante que áudios, ícones e código funcionem offline
+        // Padrões de ficheiros que devem ser guardados para uso offline
+        // Incluímos explicitamente .mp3 para garantir o feedback sonoro na mata
         globPatterns: ['**/*.{js,css,html,ico,png,svg,mp3}']
       }
     })
   ],
+  build: {
+    // Aumentamos o limite para evitar avisos de chunk, já que o app está a crescer
+    chunkSizeWarningLimit: 1000,
+  },
   resolve: {
     alias: {
+      // Atalho @ para a pasta src
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Mantendo seus assets personalizados
+  // Suporte a importação de ficheiros de dados e vetores
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
