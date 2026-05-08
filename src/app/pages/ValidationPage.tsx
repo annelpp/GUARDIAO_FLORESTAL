@@ -225,12 +225,12 @@ export default function ValidationPage() {
         <p className="text-gray-600">Monitore o perímetro via IoT e realize auditorias individuais simultaneamente.</p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
+      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:items-start">
         
         {/* ========================================== */}
         {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO) */}
         {/* ========================================== */}
-        <Card className="border-blue-200 bg-slate-50 shadow-md lg:sticky lg:top-6 relative z-10">
+        <Card className="border-blue-200 bg-slate-50 shadow-md static lg:sticky lg:top-6 h-fit z-10">
           <CardHeader className="bg-blue-600 text-white rounded-t-lg pb-4">
             <CardTitle className="flex items-center justify-between text-lg">
               <span className="flex items-center gap-2"><Activity className="size-5"/> Estação de Área (IoT)</span>
