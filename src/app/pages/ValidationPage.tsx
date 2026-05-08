@@ -230,7 +230,7 @@ export default function ValidationPage() {
         {/* ========================================== */}
         {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO) */}
         {/* ========================================== */}
-        <Card className="border-blue-200 bg-slate-50 shadow-md sticky top-6">
+        <Card className="border-blue-200 bg-slate-50 shadow-md lg:sticky lg:top-6 relative z-10">
           <CardHeader className="bg-blue-600 text-white rounded-t-lg pb-4">
             <CardTitle className="flex items-center justify-between text-lg">
               <span className="flex items-center gap-2"><Activity className="size-5"/> Estação de Área (IoT)</span>
