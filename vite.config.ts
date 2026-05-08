@@ -14,11 +14,11 @@ export default defineConfig({
       manifest: {
         name: 'Guardião Florestal - Cerca Digital',
         short_name: 'Guardião',
-        start_url: '/validation', 
-        display: 'standalone',
+        start_url: '/', 
         description: 'Monitoramento IoT e Rastreabilidade NFC para Preservação Florestal',
-        theme_color: '#059669', 
+        theme_color: '#059669',
         background_color: '#ffffff',
+        display: 'standalone',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -35,7 +35,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,mp3}'],
-        maximumFileSizeToCacheInBytes: 5000000 
+        maximumFileSizeToCacheInBytes: 5000000,
+        navigateFallback: '/index.html' 
       }
     })
   ],
@@ -44,7 +45,6 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Atalho @ para a pasta src
       '@': path.resolve(__dirname, './src'),
     },
   },
