@@ -14,7 +14,13 @@ export interface Tree {
   manejo: 'sustentável' | 'permanente';
   diameter: number; // cm
   height: number; // metros
-  imageUrl?: string; // Propriedade adicionada para armazenar a URL da foto da árvore
+  imageUrl?: string; 
+  
+  // --- NOVAS PROPRIEDADES PARA A FICHA TÉCNICA ---
+  location?: string;
+  baseDiameter?: string;
+  baseHeight?: string;
+  lastValidation?: string;
 }
 
 export interface Alert {
@@ -60,6 +66,11 @@ export const mockTrees: Tree[] = [
     diameter: 65,
     height: 18.5,
     imageUrl: 'https://images.unsplash.com/photo-1596328546171-77e37b5fefef?auto=format&fit=crop&q=80&w=400',
+    // Adaptações para a UI da Ficha Técnica
+    location: '-3.1190, -60.0217',
+    baseDiameter: '65',
+    baseHeight: '18.5',
+    lastValidation: '06/04/2026',
   },
   {
     id: 'tree-002',
@@ -78,6 +89,10 @@ export const mockTrees: Tree[] = [
     diameter: 80,
     height: 22.0,
     imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=400',
+    location: '-3.1195, -60.0220',
+    baseDiameter: '80',
+    baseHeight: '22.0',
+    lastValidation: '06/04/2026',
   },
   {
     id: 'tree-003',
@@ -95,7 +110,10 @@ export const mockTrees: Tree[] = [
     manejo: 'sustentável',
     diameter: 55,
     height: 16.0,
-    // Árvore sem imagem para testarmos o estado vazio (placeholder)
+    location: '-3.1200, -60.0225',
+    baseDiameter: '55',
+    baseHeight: '16.0',
+    lastValidation: '06/04/2026',
   },
   {
     id: 'tree-004',
@@ -114,6 +132,10 @@ export const mockTrees: Tree[] = [
     diameter: 70,
     height: 20.5,
     imageUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&q=80&w=400',
+    location: '-3.1185, -60.0212',
+    baseDiameter: '70',
+    baseHeight: '20.5',
+    lastValidation: '06/04/2026',
   },
   {
     id: 'tree-005',
@@ -131,6 +153,10 @@ export const mockTrees: Tree[] = [
     manejo: 'sustentável',
     diameter: 58,
     height: 17.0,
+    location: '-3.1205, -60.0230',
+    baseDiameter: '58',
+    baseHeight: '17.0',
+    lastValidation: '06/04/2026',
   },
   {
     id: 'tree-006',
@@ -148,6 +174,10 @@ export const mockTrees: Tree[] = [
     manejo: 'permanente',
     diameter: 72,
     height: 19.5,
+    location: '-3.1180, -60.0208',
+    baseDiameter: '72',
+    baseHeight: '19.5',
+    lastValidation: '06/04/2026',
   },
 ];
 
