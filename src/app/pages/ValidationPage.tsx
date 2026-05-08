@@ -194,11 +194,19 @@ export default function ValidationPage() {
   // ==========================================
   const startTreeValidation = () => {
     if (!fiscalName || !fiscalId || !selectedTreeId) return;
-    setTreeStep('nfc');
-    setTimeout(() => {
+    
+    if (treeIdFromUrl) {
+      // Se a página foi aberta pela Tag NFC, pula a animação e vai direto pro formulário
       setNfcVerified(true);
       setTreeStep('inspection');
-    }, 1500);
+    } else {
+      // Se o usuário selecionou a árvore na mão, exige a leitura NFC (animação)
+      setTreeStep('nfc');
+      setTimeout(() => {
+        setNfcVerified(true);
+        setTreeStep('inspection');
+      }, 1500);
+    }
   };
 
   const resetTreeValidation = () => {
@@ -481,8 +489,20 @@ export default function ValidationPage() {
             {/* === FIM DO BLOCO DE REPORT === */}
 
             {treeStep === 'idle' && (
-              <Button onClick={startTreeValidation} className="w-full bg-green-600 hover:bg-green-700 h-12 text-md" disabled={!fiscalName || !fiscalId || !selectedTreeId}>
-                <Smartphone className="size-5 mr-2" /> Ler Identidade (NFC)
+              <Button 
+                onClick={startTreeValidation} 
+                className="w-full bg-green-600 hover:bg-green-700 h-12 text-md shadow-md transition-all" 
+                disabled={!fiscalName || !fiscalId || !selectedTreeId}
+              >
+                {treeIdFromUrl ? (
+                  <>
+                    <CheckSquare className="size-5 mr-2" /> Iniciar Auditoria
+                  </>
+                ) : (
+                  <>
+                    <Smartphone className="size-5 mr-2 animate-pulse" /> Ler Identidade Físicamente (NFC)
+                  </>
+                )}
               </Button>
             )}
 
