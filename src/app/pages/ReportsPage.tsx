@@ -97,7 +97,7 @@ export default function ReportsPage() {
       </div>
 
       {/* 2. DIV EMBRULHANDO TUDO QUE QUEREMOS FOTOGRAFAR PARA O PDF */}
-      <div id="dashboard-charts-container" className="space-y-6 bg-gray-50 p-2 -m-2 rounded-xl">
+      <div id="dashboard-charts-container" className="space-y-6 bg-gray-50 dark:bg-transparent p-2 -m-2 rounded-xl transition-colors">
         
         {/* KPIs Principais */}
         <div className="grid md:grid-cols-4 gap-4">
@@ -226,7 +226,7 @@ export default function ReportsPage() {
                   <Bar dataKey="alerts" fill="#ef4444" name="Alertas" />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50 transition-colors">
                 <p className="text-sm text-green-800">
                   <strong>Tendência Positiva:</strong> Redução de 80% nos alertas desde outubro
                 </p>
@@ -264,7 +264,7 @@ export default function ReportsPage() {
                   <Badge 
                     key={item.name} 
                     variant="outline"
-                    className="flex items-center gap-1 bg-white"
+                    className="flex items-center gap-1 bg-white dark:bg-gray-800 dark:!border-gray-700"
                     style={{ borderColor: item.color, color: item.color }}
                   >
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
@@ -324,7 +324,7 @@ export default function ReportsPage() {
               </div>
               <div className="flex flex-col justify-center space-y-4">
                 {manejoDistribution.map((item) => (
-                  <div key={item.name} className="bg-white rounded-lg p-4 border shadow-sm">
+                  <div key={item.name} className="bg-white dark:bg-gray-800 rounded-lg p-4 border dark:border-gray-700 shadow-sm transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />
@@ -343,7 +343,7 @@ export default function ReportsPage() {
         </Card>
 
         {/* Resumo Executivo */}
-        <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
+        <Card className="bg-gradient-to-br from-green-50 dark:from-green-900/10 to-blue-50 dark:to-blue-900/10 border-green-200 dark:border-green-800/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="size-5" />

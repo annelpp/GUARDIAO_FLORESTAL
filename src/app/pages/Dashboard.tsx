@@ -40,7 +40,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors duration-300">
       {/* Stats Overview */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
@@ -193,7 +193,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               {[...criticalTrees, ...warningTrees].map((tree) => (
-                <div key={tree.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                <div key={tree.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`w-3 h-3 rounded-full ${getStatusColor(tree.status)}`} />
                     <div>
