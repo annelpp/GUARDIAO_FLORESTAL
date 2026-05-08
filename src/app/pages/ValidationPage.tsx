@@ -15,7 +15,7 @@ import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockTrees, mockValidations, Tree } from '../data/mockData';
+import { mockTrees, Tree } from '../data/mockData';
 import { toast } from 'sonner'; 
 
 // ==========================================
@@ -37,10 +37,10 @@ const playFeedback = (type: 'success' | 'error') => {
   }
 };
 
+// Interface atualizada para acomodar os dados vindos fisicamente do Arduino
 interface SensorData {
-  temp: number;
-  umidade: number;
-  gas: number;
+  temp: number | null;
+  gasStatus: string;
   alarme: boolean;
   msg: string;
 }
@@ -53,10 +53,16 @@ export default function ValidationPage() {
   const treeIdFromUrl = searchParams.get('treeId'); 
 
   // ==========================================
-  // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO)
+  // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO FÍSICO)
   // ==========================================
   const [isConnected, setIsConnected] = useState(false);
-  const [sensorData, setSensorData] = useState<SensorData | null>(null);
+  const [sensorData, setSensorData] = useState<SensorData>({
+    temp: null,
+    gasStatus: 'Aguardando...',
+    alarme: false,
+    msg: 'Monitoramento inativo'
+  });
+  
   const [serialError, setSerialError] = useState<string>('');
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
   
@@ -127,32 +133,30 @@ export default function ValidationPage() {
   
 
   // ==========================================
-  // LÓGICA DO ARDUINO (ÁREA)
+  // LÓGICA DO ARDUINO FÍSICO VIA CABO USB-C
   // ==========================================
   const connectPhysicalSensor = async () => {
     try {
       if (!('serial' in navigator)) {
-        setSerialError('Navegador incompatível com porta serial. Use Chrome ou Edge.');
+        setSerialError('Seu navegador/dispositivo não suporta conexão USB Serial. No Android, ative a flag "Web Serial API" no Chrome.');
         return;
       }
 
       const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate: 115200 });
+      // O BaudRate deve ser EXATAMENTE igual ao Serial.begin(115200) do seu main.cpp do Arduino
+      await port.open({ baudRate: 115200 }); 
       
-      // Impede o ESP32/Arduino de resetar ao abrir a porta
-      await port.setSignals({ dataTerminalReady: false, requestToSend: false });
-
       portRef.current = port;
       setIsConnected(true);
       setSerialError('');
-      setSerialLogs(['> Sistema Guardião Base estabelecido. Monitorando perímetro...']);
+      setSerialLogs(['> Conexão Física Estabelecida. Aguardando dados do ESP32/Arduino...']);
 
       const textDecoder = new TextDecoderStream();
       port.readable.pipeTo(textDecoder.writable);
       const reader = textDecoder.readable.getReader();
       readerRef.current = reader;
 
-      let partialData = '';
+      let buffer = '';
 
       while (true) {
         const { value, done } = await reader.read();
@@ -161,52 +165,84 @@ export default function ValidationPage() {
           break;
         }
         
-        partialData += value;
-        const lines = partialData.split('\n');
-        partialData = lines.pop() || '';
+        if (value) {
+          buffer += value;
+          const lines = buffer.split('\n');
+          // Guarda o pedaço final que pode estar cortado para o próximo ciclo
+          buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (trimmedLine) {
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+
             const timestamp = new Date().toLocaleTimeString('pt-BR');
-            let logMsg = trimmedLine;
+            let logMsg = cleanLine;
 
-            if (trimmedLine.startsWith('{') && trimmedLine.endsWith('}')) {
-              try {
-                const parsed = JSON.parse(trimmedLine);
-                if (parsed.temp !== undefined && parsed.umidade !== undefined) {
-                  
-                  // ==========================================
-                  // LÓGICA DE FEEDBACK (NOVO)
-                  // ==========================================
-                  // Dispara o alerta se o alarme mudar de 'false' para 'true'
-                  if (parsed.alarme && !sensorData?.alarme) {
-                    playFeedback('error');
-                    toast.error("PERIGO DETECTADO!", {
-                      description: parsed.msg,
-                      duration: Infinity, // Mantém na tela até o fiscal fechar
-                    });
-                  } 
-                  // Dispara um aviso sonoro leve se a temperatura subir demais (Atenção)
-                  else if (parsed.temp >= 32 && (!sensorData || sensorData.temp < 32)) {
-                    playFeedback('error'); // Ou um som de 'warning' se você tiver
-                    toast.warning("Alerta de Calor", {
-                      description: "A temperatura no perímetro ultrapassou 32°C.",
-                    });
-                  }
+            // Variáveis temporárias para atualizar o estado de forma coesa
+            let updatedTemp = sensorData.temp;
+            let updatedGas = sensorData.gasStatus;
+            let isAlarm = sensorData.alarme;
+            let alertMsg = sensorData.msg;
+            let stateChanged = false;
 
-                  setSensorData(parsed);
-                  
-                  const icone = parsed.alarme ? '⚠️ PERIGO' : (parsed.temp >= 32 ? '⚠️ ATENÇÃO' : ' OK');
-                  const msgTratada = parsed.alarme ? parsed.msg : (parsed.temp >= 32 ? "Temperatura necessita atenção" : parsed.msg);
-                  
-                  logMsg = `Temp: ${parsed.temp.toFixed(1)}°C | Umi: ${parsed.umidade.toFixed(0)}% | Gás: ${parsed.gas} | ${icone} (${msgTratada})`;
-                }
-              } catch (err) {
-                // Erro silencioso no parse
-              }
+            // Extração da Temperatura ("Temperatura:XX.XX°C|")
+            if (cleanLine.includes("Temperatura:")) {
+               const tempStr = cleanLine.split("Temperatura:")[1]?.split("°C")[0];
+               if (tempStr) {
+                 const tempVal = parseFloat(tempStr);
+                 if (!isNaN(tempVal)) {
+                    updatedTemp = tempVal;
+                    stateChanged = true;
+                    // Lógica de alerta por temperatura (ex: acima de 40 graus)
+                    if (tempVal >= 40 && !isAlarm) {
+                      isAlarm = true;
+                      alertMsg = "Anomalia Térmica Extrema Detectada!";
+                      playFeedback('error');
+                      toast.error("Alerta Crítico: Calor Extremo", { description: "Temperatura acima de 40°C no perímetro."});
+                    }
+                 }
+               }
             }
 
+            // Tratamento do Gás e Fumaça vindo do Arduino
+            if (cleanLine.includes("PERIGO: INCÊNDIO DETECTADO")) {
+               updatedGas = "FUMAÇA DETECTADA!";
+               isAlarm = true;
+               alertMsg = "Fogo ou fumaça densa identificados!";
+               stateChanged = true;
+               playFeedback('error');
+               toast.error("PERIGO DE INCÊNDIO", { description: "Concentração letal de fumaça detectada.", duration: Infinity });
+            } 
+            else if (cleanLine.includes("Indícios de fumaça detectados")) {
+               updatedGas = "Aviso: Nível Médio";
+               stateChanged = true;
+               toast.warning("Atenção Perímetro", { description: "Indícios de fumaça identificados na área." });
+            } 
+            else if (cleanLine.includes("GAS NORMAL")) {
+               updatedGas = "Normal";
+               if (isAlarm) {
+                 isAlarm = false;
+                 alertMsg = "Perímetro estabilizado";
+               }
+               stateChanged = true;
+            }
+
+            // Atualiza o Console de Logs com o ícone adequado
+            const icone = isAlarm ? '⚠️ PERIGO' : '🟢 OK';
+            logMsg = `[Físico] ${cleanLine}`;
+
+            // Atualiza o estado apenas se houve mudança real nos dados analisados
+            if (stateChanged) {
+              setSensorData(prev => ({
+                ...prev,
+                temp: updatedTemp,
+                gasStatus: updatedGas,
+                alarme: isAlarm,
+                msg: alertMsg
+              }));
+            }
+
+            // Limita o log a 50 linhas para não travar a memória do celular
             setSerialLogs(prev => [...prev.slice(-49), `[${timestamp}] ${logMsg}`]);
           }
         }
@@ -214,9 +250,9 @@ export default function ValidationPage() {
 
     } catch (err: any) {
       if (err.message.includes("No port selected")) {
-        setSerialError("Seleção cancelada pelo usuário.");
+        setSerialError("Seleção de dispositivo cancelada.");
       } else if (err.message.includes("Failed to open") || err.message.includes("Access denied")) {
-        setSerialError("A porta COM está trancada! Feche o monitor serial do VS Code.");
+        setSerialError("A porta COM está ocupada (Feche a IDE do Arduino ou VS Code).");
       } else {
         setSerialError(`Erro de conexão USB: ${err.message}`);
       }
@@ -225,11 +261,15 @@ export default function ValidationPage() {
   };
 
   const disconnectSensor = async () => {
-    if (readerRef.current) await readerRef.current.cancel();
-    if (portRef.current) await portRef.current.close();
+    if (readerRef.current) {
+        await readerRef.current.cancel();
+    }
+    if (portRef.current) {
+        await portRef.current.close();
+    }
     setIsConnected(false);
-    setSensorData(null);
-    setSerialLogs(prev => [...prev, '> Monitoramento de área desativado.']);
+    setSensorData({ temp: null, gasStatus: 'Aguardando...', alarme: false, msg: 'Monitoramento inativo' });
+    setSerialLogs(prev => [...prev, '> Cabo USB Desconectado.']);
   };
 
   useEffect(() => {
@@ -245,7 +285,6 @@ export default function ValidationPage() {
     if (treeIdFromUrl) {
       setNfcVerified(true);
       setTreeStep('inspection');
-      // ADICIONE AQUI:
       playFeedback('success');
       toast.success("Acesso via NFC detectado!");
     } else {
@@ -305,7 +344,6 @@ export default function ValidationPage() {
     } catch (e) {
       console.warn("Falha no feedback:", e);
     } finally {
-      // Garante o fechamento do formulário
       resetTreeValidation();
     }
   }; 
@@ -316,18 +354,18 @@ export default function ValidationPage() {
         <h1 className="text-3xl font-bold flex items-center gap-2">
             <ShieldCheck className="text-green-600 size-8"/> Central de Operações em Campo
         </h1>
-        <p className="text-gray-600">Monitore o perímetro via IoT e realize auditorias individuais simultaneamente.</p>
+        <p className="text-gray-600">Monitore o perímetro ligando o cabo USB-C e realize auditorias individuais (NFC).</p>
       </div>
 
       <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:items-start">
         
         {/* ========================================== */}
-        {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO) */}
+        {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO FÍSICO) */}
         {/* ========================================== */}
         <Card className="border-blue-200 bg-slate-50 shadow-md static lg:sticky lg:top-6 h-fit z-10">
           <CardHeader className="bg-blue-600 text-white rounded-t-lg pb-4">
             <CardTitle className="flex items-center justify-between text-lg">
-              <span className="flex items-center gap-2"><Activity className="size-5"/> Estação de Área (IoT)</span>
+              <span className="flex items-center gap-2"><Activity className="size-5"/> Estação de Área (Física via USB)</span>
               {isConnected ? (
                 <Badge variant="outline" className="bg-green-500/20 text-white border-none animate-pulse">Online</Badge>
               ) : (
@@ -339,10 +377,10 @@ export default function ValidationPage() {
             {!isConnected ? (
                <div className="space-y-3 text-center py-6">
                     <Usb className="size-12 mx-auto text-blue-300" />
-                    <p className="text-sm text-slate-600 px-4">Conecte o sensor base na porta USB para monitorar perigos no perímetro (Incêndios, Gás, etc) antes de iniciar as rondas.</p>
+                    <p className="text-sm text-slate-600 px-4">Conecte o Arduino/ESP32 à porta USB do seu dispositivo (PC ou Celular Android) para ler os sensores em campo.</p>
                     {serialError && <p className="text-sm text-red-600 font-bold">{serialError}</p>}
-                    <Button onClick={connectPhysicalSensor} className="bg-blue-600 hover:bg-blue-700 w-full mt-2">
-                        Conectar Estação USB
+                    <Button onClick={connectPhysicalSensor} className="bg-blue-600 hover:bg-blue-700 w-full mt-2 h-12 text-md">
+                        Conectar Cabo USB-C
                     </Button>
                </div>
             ) : (
@@ -353,19 +391,19 @@ export default function ValidationPage() {
                    <div className="flex items-center gap-2">
                      {sensorData?.alarme ? (
                        <AlertTriangle className="size-5 text-red-600" />
-                     ) : sensorData?.temp !== undefined && sensorData.temp >= 32 ? (
+                     ) : sensorData?.temp !== null && sensorData.temp >= 32 ? (
                        <AlertTriangle className="size-5 text-orange-500" />
                      ) : (
                        <CheckCircle2 className="size-5 text-green-600" />
                      )}
                      <span className={`font-semibold ${
                         sensorData?.alarme ? 'text-red-800' : 
-                        sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-800' : 
+                        sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-800' : 
                         'text-green-800'
                      }`}>
                         {sensorData?.alarme ? 'ALERTA CRÍTICO NO PERÍMETRO' : 
-                         sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'ATENÇÃO NO PERÍMETRO' : 
-                         'Área Segura para Ronda'}
+                         sensorData?.temp !== null && sensorData.temp >= 32 ? 'ATENÇÃO TÉRMICA' : 
+                         'Área Segura e Conectada'}
                      </span>
                    </div>
                    <Button variant="outline" size="sm" onClick={disconnectSensor} className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
@@ -377,85 +415,80 @@ export default function ValidationPage() {
                 {sensorData && (
                     <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${
                         sensorData.alarme ? 'bg-red-50 border-red-200 text-red-700' : 
-                        sensorData.temp >= 32 ? 'bg-orange-50 border-orange-200 text-orange-700' : 
+                        sensorData.temp !== null && sensorData.temp >= 32 ? 'bg-orange-50 border-orange-200 text-orange-700' : 
                         'bg-white border-slate-200 text-slate-700'
                     }`}>
-                        <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp >= 32 ? 'text-orange-500' : 'text-blue-500'}`}/> 
-                        Status da Área: <strong>
-                          {sensorData.alarme ? sensorData.msg : (sensorData.temp >= 32 ? "Temperatura necessita atenção" : sensorData.msg)}
-                        </strong>
+                        <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp !== null && sensorData.temp >= 32 ? 'text-orange-500' : 'text-blue-500'}`}/> 
+                        Status da Área: <strong>{sensorData.msg}</strong>
                     </div>
                 )}
                 
-                {/* 3. OS 4 CARTÕES DE DADOS */}
-                <div className="grid grid-cols-4 gap-2">
+                {/* 3. OS 4 CARTÕES DE DADOS FÍSICOS */}
+                <div className="grid grid-cols-3 gap-2">
                   <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${
-                      sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'bg-red-100 border-red-500' : 
-                      sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
+                      sensorData?.temp !== null && sensorData.temp >= 40 ? 'bg-red-100 border-red-500' : 
+                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
                       'bg-white'
                   }`}>
                       <Thermometer className={`size-5 mb-1 ${
-                          sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'text-red-600' : 
-                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-600' : 
+                          sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-600' : 
+                          sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-600' : 
                           'text-orange-500'
                       }`}/>
                       <span className={`font-bold text-sm ${
-                          sensorData?.temp !== undefined && sensorData.temp >= 40 ? 'text-red-700' : 
-                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-700' : 
+                          sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-700' : 
+                          sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-700' : 
                           'text-slate-800'
                       }`}>
-                          {sensorData?.temp !== undefined ? sensorData.temp.toFixed(1) : '--'}°C
+                          {sensorData?.temp !== null ? sensorData.temp.toFixed(1) : '--'}°C
                       </span>
                   </div>
 
                   <div className="bg-white p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20">
-                      <Droplets className="size-5 text-blue-400 mb-1"/>
-                      <span className="font-bold text-sm">{sensorData?.umidade !== undefined ? sensorData.umidade.toFixed(0) : '--'}%</span>
-                  </div>
-                  <div className="bg-white p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20">
-                      <Wind className="size-5 text-slate-500 mb-1"/>
-                      <span className="font-bold text-sm">{sensorData?.gas ?? '--'}</span>
+                      <Wind className={`size-5 mb-1 ${sensorData.alarme ? 'text-red-500' : 'text-slate-500'}`}/>
+                      <span className={`font-bold text-xs ${sensorData.alarme ? 'text-red-600' : 'text-slate-600'}`}>{sensorData.gasStatus}</span>
                   </div>
                   
-                  {/* CARTÃO DE STATUS GERAL */}
+                  {/* CARTÃO DE STATUS GERAL DA ESTAÇÃO */}
                   <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${
                       sensorData?.alarme ? 'bg-red-100 border-red-500' : 
-                      sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
+                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
                       'bg-white'
                   }`}>
                       <Flame className={`size-5 mb-1 ${
                           sensorData?.alarme ? 'text-red-600' : 
-                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-500' : 
+                          sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-500' : 
                           'text-green-500'
                       }`}/>
                       <span className={`font-bold text-xs tracking-wider ${
                           sensorData?.alarme ? 'text-red-600' : 
-                          sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'text-orange-600' : 
+                          sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-600' : 
                           'text-green-600'
                       }`}>
                           {sensorData?.alarme ? 'PERIGO' : 
-                           sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'ATENÇÃO' : 
+                           sensorData?.temp !== null && sensorData.temp >= 32 ? 'ATENÇÃO' : 
                            'SEGURO'}
                       </span>
                   </div>
                 </div>
 
+                {/* CONSOLE FÍSICO */}
                 <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800 shadow-inner">
                   <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between border-b border-slate-700">
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                      <Terminal className="size-3" /> Console de Monitoramento
+                      <Terminal className="size-3" /> Console de Dados USB (Raw)
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                       </span>
-                      <span className="text-[10px] text-green-400 font-mono">LIVE</span>
+                      <span className="text-[10px] text-green-400 font-mono">LIVE RX/TX</span>
                     </div>
                   </div>
                   <div className="h-40 p-3 overflow-y-auto text-[11px] font-mono text-green-400 space-y-1">
                     {serialLogs.length === 0 ? (
-                      <span className="text-slate-500">Aguardando dados...</span>
+                      <span className="text-slate-500">Aguardando bits físicos do Arduino...</span>
                     ) : (
                       serialLogs.map((log, idx) => (
                         <div key={idx} className="break-all hover:bg-slate-800 px-1 rounded transition-colors">
@@ -516,7 +549,7 @@ export default function ValidationPage() {
               </Select>
             </div>
 
-            {/* === NOVO BLOCO: REPORT COMPLETO DA ÁRVORE === */}
+            {/* === REPORT COMPLETO DA ÁRVORE === */}
             {selectedTreeId && fullTreeData && (
               <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300 shadow-sm">
                 <div className="flex items-center justify-between border-b pb-2 border-slate-200">
@@ -535,7 +568,6 @@ export default function ValidationPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-slate-500 text-[10px] uppercase font-bold">Idade Estimada</span>
-                    {/* Usando um fallback caso a idade não exista no mock ainda */}
                     <span className="font-medium">{fullTreeData.age || '12 anos'}</span> 
                   </div>
                   <div className="flex flex-col">
@@ -566,9 +598,8 @@ export default function ValidationPage() {
                     <div className="flex items-center gap-4 text-xs">
                         <div className="flex items-center gap-1">
                             <Thermometer className="size-4 text-orange-500"/>
-                            {/* Integra o sensor IoT ao vivo se conectado, caso contrário mostra "Desconhecido" ou histórico */}
                             <span className="font-semibold text-slate-700">
-                              {sensorData?.temp !== undefined ? `${sensorData.temp.toFixed(1)}°C (Live)` : 'Ambiente Indisponível'}
+                              {sensorData?.temp !== null ? `${sensorData.temp.toFixed(1)}°C (Físico)` : 'Cabo Desconectado'}
                             </span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -589,7 +620,6 @@ export default function ValidationPage() {
                 </div>
               </div>
             )}
-            {/* === FIM DO BLOCO DE REPORT === */}
 
             {treeStep === 'idle' && (
               <Button 
@@ -637,7 +667,7 @@ export default function ValidationPage() {
                   </div>
                 </div>
 
-                {/* 2. NOVO: BLOCO DE BIOMETRIA E BIOMASSA */}
+                {/* 2. BLOCO DE BIOMETRIA E BIOMASSA */}
                 <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-4 shadow-sm">
                   <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
                     <Activity className="size-4 text-green-600"/> Biometria e Cálculo de Biomassa Atual
@@ -682,8 +712,8 @@ export default function ValidationPage() {
 
                 {/* 4. RESUMO DO AMBIENTE IOT */}
                 <div className="p-3 bg-slate-50 rounded border text-xs text-slate-600">
-                    <strong>Resumo do Certificado:</strong> Será anexado a esta auditoria o estado ambiental fornecido pela <em>Estação de Área</em>. 
-                    Status atual: <span className={sensorData?.alarme ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{sensorData?.alarme ? 'PERIGO' : 'SEGURO'}</span>.
+                    <strong>Resumo do Certificado:</strong> Será anexado a esta auditoria o estado ambiental fornecido pela <em>Estação de Área</em> via USB. 
+                    Status atual: <span className={sensorData?.alarme ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{sensorData?.alarme ? 'PERIGO (FUMAÇA)' : 'SEGURO'}</span>.
                 </div>
 
                 {/* 5. AÇÕES DE FINALIZAÇÃO */}
