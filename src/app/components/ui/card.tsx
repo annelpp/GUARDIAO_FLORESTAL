@@ -7,7 +7,8 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border",
+        // Removi "bg-card text-card-foreground" e coloquei nossas cores explícitas:
+        "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col gap-6 rounded-xl border dark:border-gray-800 transition-colors duration-300",
         className,
       )}
       {...props}
@@ -42,7 +43,8 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <p
       data-slot="card-description"
-      className={cn("text-muted-foreground", className)}
+      // Adicionado suporte para texto mutado no dark mode
+      className={cn("text-gray-500 dark:text-gray-400", className)}
       {...props}
     />
   );
