@@ -85,10 +85,10 @@ export default function ValidationPage() {
   const [nfcVerified, setNfcVerified] = useState(false);
 
   const [inspectionData, setInspectionData] = useState({
-  trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
-  visualDamage: false, pestsSigns: false, illegalCutSigns: false,
-  fireRiskLevel: '', currentDiameter: '', currentHeight: '', weatherCondition: '',
-  soilMoisture: '', photosCount: 0,
+    trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
+    visualDamage: false, pestsSigns: false, illegalCutSigns: false,
+    fireRiskLevel: '', currentDiameter: '', currentHeight: '', weatherCondition: '',
+    soilMoisture: '', photosCount: 0,
   });
 
   // Lógica para Cálculo de Biomassa Acima do Solo (AGB - Above Ground Biomass)
@@ -240,24 +240,24 @@ export default function ValidationPage() {
   // LÓGICA DA ÁRVORE (NFC + INSPEÇÃO)
   // ==========================================
   const startTreeValidation = () => {
-  if (!fiscalName || !fiscalId || !selectedTreeId) return;
-  
-  if (treeIdFromUrl) {
-    setNfcVerified(true);
-    setTreeStep('inspection');
-    // ADICIONE AQUI:
-    playFeedback('success');
-    toast.success("Acesso via NFC detectado!");
-  } else {
-    setTreeStep('nfc');
-    setTimeout(() => {
+    if (!fiscalName || !fiscalId || !selectedTreeId) return;
+    
+    if (treeIdFromUrl) {
       setNfcVerified(true);
       setTreeStep('inspection');
+      // ADICIONE AQUI:
       playFeedback('success');
-      toast.success("Tag NFC lida com sucesso!");
-    }, 1500);
-  }
-};
+      toast.success("Acesso via NFC detectado!");
+    } else {
+      setTreeStep('nfc');
+      setTimeout(() => {
+        setNfcVerified(true);
+        setTreeStep('inspection');
+        playFeedback('success');
+        toast.success("Tag NFC lida com sucesso!");
+      }, 1500);
+    }
+  };
 
   const resetTreeValidation = () => {
     setTreeStep('idle');
@@ -270,7 +270,7 @@ export default function ValidationPage() {
     setInspectionData({
       trunkCondition: '', foliageHealth: '', soilCondition: '', nfcTagIntegrity: '',
       visualDamage: false, pestsSigns: false, illegalCutSigns: false,
-      fireRiskLevel: '', currentDiameter: '', weatherCondition: '',
+      fireRiskLevel: '', currentDiameter: '', currentHeight: '', weatherCondition: '',
       soilMoisture: '', photosCount: 0,
     });
   };
@@ -308,7 +308,7 @@ export default function ValidationPage() {
       // Garante o fechamento do formulário
       resetTreeValidation();
     }
-  }; // <--- Fecha submitValidation
+  }; 
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -348,7 +348,7 @@ export default function ValidationPage() {
             ) : (
               <div className="space-y-4">
                 
-                {/* 1. CABEÇALHO DO STATUS (3 níveis: Perigo, Atenção, Seguro) */}
+                {/* 1. CABEÇALHO DO STATUS */}
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
                      {sensorData?.alarme ? (
@@ -373,7 +373,7 @@ export default function ValidationPage() {
                    </Button>
                 </div>
                 
-                {/* 2. CAIXA DE MENSAGEM (Forçando aviso de temperatura alta se necessário) */}
+                {/* 2. CAIXA DE MENSAGEM */}
                 {sensorData && (
                     <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${
                         sensorData.alarme ? 'bg-red-50 border-red-200 text-red-700' : 
@@ -417,7 +417,7 @@ export default function ValidationPage() {
                       <span className="font-bold text-sm">{sensorData?.gas ?? '--'}</span>
                   </div>
                   
-                  {/* CARTÃO DE STATUS GERAL (3 níveis) */}
+                  {/* CARTÃO DE STATUS GERAL */}
                   <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${
                       sensorData?.alarme ? 'bg-red-100 border-red-500' : 
                       sensorData?.temp !== undefined && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' : 
@@ -440,7 +440,6 @@ export default function ValidationPage() {
                   </div>
                 </div>
 
-                {/* CONSOLE FICA ABAIXO DISSO INALTERADO... */}
                 <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-800 shadow-inner">
                   <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between border-b border-slate-700">
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
@@ -580,22 +579,7 @@ export default function ValidationPage() {
                         </div>
                     </div>
                 </div>
-              </div>
-            )}
-                  <div className="flex flex-col">
-                    <span className="text-slate-500 text-[10px] uppercase font-bold">Coordenadas</span>
-                    <span className="font-medium flex items-center gap-1"><MapPin className="size-3"/> {fullTreeData.location}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-slate-500 text-[10px] uppercase font-bold">Última Auditoria</span>
-                    <span className="font-medium flex items-center gap-1"><Clock className="size-3"/> {fullTreeData.lastValidation}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-slate-500 text-[10px] uppercase font-bold">NFC Tag</span>
-                    <span className="font-medium text-blue-600">{fullTreeData.nfcId}</span>
-                  </div>
-                </div>
-
+                
                 <div className="mt-2 p-2 bg-white rounded border border-slate-200">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Histórico Recente</p>
                     <ul className="text-[11px] space-y-1 text-slate-600">
@@ -717,4 +701,4 @@ export default function ValidationPage() {
       </div>
     </div>
   ); 
-} 
+}
