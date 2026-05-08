@@ -16,6 +16,26 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { mockTrees, mockValidations, Tree } from '../data/mockData';
+import { toast } from 'sonner'; 
+
+// ==========================================
+// FUNÇÕES AUXILIARES (FORA DO COMPONENTE)
+// ==========================================
+
+/**
+ * Dispara o feedback sonoro de forma segura.
+ * Colocada fora para evitar recriações de escopo e garantir estabilidade.
+ */
+const playFeedback = (type: 'success' | 'error') => {
+  try {
+    const audio = new Audio(`/sounds/${type}.mp3`);
+    audio.volume = 0.5;
+    // O catch é essencial para que o erro de áudio não trave o restante da função chamadora
+    audio.play().catch(e => console.warn("Aviso: Áudio bloqueado ou não encontrado.", e));
+  } catch (err) {
+    console.error("Erro crítico ao tentar reproduzir som:", err);
+  }
+};
 
 interface SensorData {
   temp: number;
@@ -31,11 +51,6 @@ export default function ValidationPage() {
   // ==========================================
   const [searchParams] = useSearchParams(); 
   const treeIdFromUrl = searchParams.get('treeId'); 
-  const playFeedback = (type: 'success' | 'error') => {
-  const audio = new Audio(`/sounds/${type}.mp3`);
-  audio.volume = 0.5;
-  audio.play().catch(() => console.log("Áudio aguardando interação do usuário."));
-};
 
   // ==========================================
   // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO)
@@ -51,10 +66,8 @@ export default function ValidationPage() {
   const auditoriaRef = useRef<HTMLDivElement>(null);
 
   // === EFEITO DE ROLAGEM AUTOMÁTICA ===
-  // Se a URL trouxer o ID da tag NFC, a tela rola suavemente para baixo
   useEffect(() => {
     if (treeIdFromUrl && auditoriaRef.current) {
-      // Usamos um setTimeout pequeno para garantir que a tela terminou de carregar no celular
       setTimeout(() => {
         auditoriaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 400); 
@@ -64,7 +77,6 @@ export default function ValidationPage() {
   // ==========================================
   // ESTADO 2: AUDITORIA DE ÁRVORE (NFC + HUMANO)
   // ==========================================
-  
   const [treeStep, setTreeStep] = useState<'idle' | 'nfc' | 'inspection'>('idle');
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fiscalName, setFiscalName] = useState('');
@@ -93,13 +105,11 @@ export default function ValidationPage() {
     }
   }, [treeIdFromUrl, localTrees]);
 
-
   useEffect(() => {
     if (logEndRef.current) {
       logEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [serialLogs]);
-
   
 
   // ==========================================
@@ -252,6 +262,7 @@ export default function ValidationPage() {
   };
 
   const submitValidation = () => {
+
     let finalStatus = 'approved';
     
     if (
@@ -262,19 +273,22 @@ export default function ValidationPage() {
     }
 
     if (finalStatus === 'approved') {
-    playFeedback('success');
-    toast.success("Certificado Emitido!", {
-      description: "Árvore aprovada e dados salvos no sistema."
-    });
-  } else {
-    playFeedback('error'); // Caso queira um som de alerta
-    toast.error("Alerta de Irregularidade!", {
-      description: "Relatório salvo com status de REJEITADO."
-    });
-  } 
-    alert(`Certificado Emitido! Status: ${finalStatus === 'approved' ? 'APROVADA ✅' : 'REJEITADA ❌'}`);
-    resetTreeValidation();
-  };
+      playFeedback('success');
+      toast.success("Certificado Emitido!", {
+        description: "Árvore aprovada e dados salvos no sistema.",
+        duration: 4000,
+      });
+    } else {
+      playFeedback('error');
+      toast.error("Alerta de Irregularidade!", {
+        description: "Relatório salvo com status de REJEITADO.",
+        duration: 5000,
+      });
+    }
+
+
+    resetTreeValidation(); 
+};
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
