@@ -63,8 +63,9 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-gray-900">
-                <AlertCircle className="text-red-500" /> O Problema
+              <h2 className="text-3xl font-bold mb-6 flex items-center gap-2 text-gray-900 dark:text-gray-900">
+                <AlertCircle className="text-red-500" /> 
+                <span className="text-gray-900 dark:text-gray-900">O Problema</span>
               </h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
                 As florestas de madeira nobre enfrentam ameaças constantes. A fiscalização manual é
