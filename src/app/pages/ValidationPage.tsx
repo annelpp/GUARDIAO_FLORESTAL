@@ -37,6 +37,23 @@ const playFeedback = (type: 'success' | 'error') => {
   }
 };
 
+// Formata a linha do console em algo legível para não-técnicos
+function formatLogLine(raw: string): string {
+  if (raw.startsWith('{') && raw.endsWith('}')) {
+    try {
+      const d = JSON.parse(raw);
+      const partes: string[] = [];
+      if (typeof d.temp === 'number') partes.push(`Temp: ${d.temp.toFixed(1)}°C`);
+      if (typeof d.umidade === 'number') partes.push(`Umidade: ${d.umidade.toFixed(0)}%`);
+      if (typeof d.gas === 'number') partes.push(`Gás: ${d.gas}`);
+      partes.push(d.alarme ? '🚨 ALARME ATIVO' : 'Sem alarme');
+      if (d.msg) partes.push(`(${d.msg})`);
+      return partes.join('  |  ');
+    } catch (_e) { /* fallback */ }
+  }
+  return raw;
+}
+
 // Interface atualizada para acomodar os dados vindos fisicamente do Arduino
 interface SensorData {
   temp: number | null;
@@ -269,7 +286,7 @@ export default function ValidationPage() {
             // Atualiza o Console de Logs com o ícone adequado
             const hasAlarm = parsedAlarm === true;
             const icone = hasAlarm ? '⚠️ PERIGO' : '🟢 OK';
-            logMsg = `[Físico] ${cleanLine}`;
+            logMsg = `[Físico] ${formatLogLine(cleanLine)}`;
 
             // Atualiza o estado com updater funcional para evitar closures estagnadas
             if (dataReceived) {
