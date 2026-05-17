@@ -21,7 +21,7 @@ export default function TreesPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTree, setEditingTree] = useState<Tree | null>(null);
 
@@ -34,7 +34,7 @@ export default function TreesPage() {
 
   const filteredTrees = trees.filter(tree => {
     const matchesSearch = tree.species.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          tree.nfcId.toLowerCase().includes(searchTerm.toLowerCase());
+      tree.nfcId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || tree.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -96,7 +96,7 @@ export default function TreesPage() {
         registrationDate: new Date().toISOString().split('T')[0],
         sensorConnected: false,
       } as Tree;
-      
+
       setTrees(prev => [newTree, ...prev]);
     }
     setIsDialogOpen(false);
@@ -110,7 +110,7 @@ export default function TreesPage() {
           <h1 className="text-3xl font-bold">Cadastro de Árvores</h1>
           <p className="text-gray-600">Gerencie e monitore todas as árvores cadastradas</p>
         </div>
-        
+
         <Button className="flex items-center gap-2" onClick={handleNewTreeClick}>
           <Plus className="size-4" />
           Cadastrar Nova Árvore
@@ -125,20 +125,20 @@ export default function TreesPage() {
               {editingTree ? `Editando Dados: ${editingTree.species}` : 'Cadastrar Nova Árvore'}
             </DialogTitle>
           </DialogHeader>
-          
-          <TreeForm 
-            initialData={editingTree} 
-            onSave={handleSaveTree} 
-            onCancel={() => setIsDialogOpen(false)} 
+
+          <TreeForm
+            initialData={editingTree}
+            onSave={handleSaveTree}
+            onCancel={() => setIsDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
 
       {/* Modal de Histórico (Linha do Tempo) */}
-      <TreeHistoryModal 
-        tree={historyTree} 
-        isOpen={isHistoryOpen} 
-        onClose={() => setIsHistoryOpen(false)} 
+      <TreeHistoryModal
+        tree={historyTree}
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
       />
 
       {/* Filtros */}
@@ -178,10 +178,10 @@ export default function TreesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3 flex-1">
                   {tree.imageUrl ? (
-                    <img 
-                      src={tree.imageUrl} 
-                      alt={tree.species} 
-                      className="size-14 rounded-md object-cover border shadow-sm flex-shrink-0" 
+                    <img
+                      src={tree.imageUrl}
+                      alt={tree.species}
+                      className="size-14 rounded-md object-cover border shadow-sm flex-shrink-0"
                     />
                   ) : (
                     <div className="size-14 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 border border-dashed flex-shrink-0">
@@ -251,18 +251,18 @@ export default function TreesPage() {
 
                 <div className="flex gap-2 pt-2">
                   {/* BOTÃO VER HISTÓRICO CONECTADO AO MODAL */}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1 text-gray-600"
                     onClick={() => handleViewHistory(tree)}
                   >
                     Ver Histórico
                   </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="flex-1" 
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
                     onClick={() => handleEditClick(tree)}
                   >
                     Editar Dados

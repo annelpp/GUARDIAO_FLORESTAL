@@ -1,3 +1,10 @@
+import imgIpe from '@/app/assets/images/Ipe_roxo.jpg';
+import imgJatoba from '@/app/assets/images/jatoba.jpg';
+import imgMogno from '@/app/assets/images/mogno.jpg';
+import imgCedro from '@/app/assets/images/Cedro (Cedrela fissilis).jpg';
+import imgPeroba from '@/app/assets/images/Peroba Rosa (Aspidosperma polyneuron).jpg';
+import imgAroeira from '@/app/assets/images/Aroeira (Myracrodruon urundeuva).webp';
+
 export interface Tree {
   id: string;
   nfcId: string;
@@ -14,8 +21,8 @@ export interface Tree {
   manejo: 'sustentável' | 'permanente';
   diameter: number; // cm
   height: number; // metros
-  imageUrl?: string; 
-  
+  imageUrl?: string;
+
   // --- NOVAS PROPRIEDADES PARA A FICHA TÉCNICA ---
   location?: string;
   baseDiameter?: string;
@@ -65,7 +72,7 @@ export const mockTrees: Tree[] = [
     manejo: 'sustentável',
     diameter: 65,
     height: 18.5,
-    imageUrl: 'https://images.unsplash.com/photo-1596328546171-77e37b5fefef?auto=format&fit=crop&q=80&w=400',
+    imageUrl: imgIpe,
     // Adaptações para a UI da Ficha Técnica
     location: '-3.1190, -60.0217',
     baseDiameter: '65',
@@ -88,7 +95,7 @@ export const mockTrees: Tree[] = [
     manejo: 'permanente',
     diameter: 80,
     height: 22.0,
-    imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=400',
+    imageUrl: imgJatoba,
     location: '-3.1195, -60.0220',
     baseDiameter: '80',
     baseHeight: '22.0',
@@ -110,6 +117,7 @@ export const mockTrees: Tree[] = [
     manejo: 'sustentável',
     diameter: 55,
     height: 16.0,
+    imageUrl: imgMogno,
     location: '-3.1200, -60.0225',
     baseDiameter: '55',
     baseHeight: '16.0',
@@ -131,7 +139,7 @@ export const mockTrees: Tree[] = [
     manejo: 'permanente',
     diameter: 70,
     height: 20.5,
-    imageUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&q=80&w=400',
+    imageUrl: imgCedro,
     location: '-3.1185, -60.0212',
     baseDiameter: '70',
     baseHeight: '20.5',
@@ -153,6 +161,7 @@ export const mockTrees: Tree[] = [
     manejo: 'sustentável',
     diameter: 58,
     height: 17.0,
+    imageUrl: imgPeroba,
     location: '-3.1205, -60.0230',
     baseDiameter: '58',
     baseHeight: '17.0',
@@ -174,6 +183,7 @@ export const mockTrees: Tree[] = [
     manejo: 'permanente',
     diameter: 72,
     height: 19.5,
+    imageUrl: imgAroeira,
     location: '-3.1180, -60.0208',
     baseDiameter: '72',
     baseHeight: '19.5',
