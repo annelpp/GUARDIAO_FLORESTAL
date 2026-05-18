@@ -8,25 +8,95 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { 
-  LineChart, Line, AreaChart, Area, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { mockAlerts, temperatureHistory, systemStats } from '../data/mockData';
+import type { Tree, Alert } from '../data/mockData';
 import { supabase, mapDbTreeToFrontend } from '../../lib/supabase';
-import type { Tree } from '../data/mockData';
 import { Link } from 'react-router';
 
 import TreeMap from '../components/TreeMap';
 
+const AREA_SENSOR_THRESHOLDS = {
+  tempCritical: 40, tempWarning: 30, gasCritical: 500, gasWarning: 120,
+};
+
+function sensorReadingToAlert(r: any, index: number): Alert | null {
+  const isHot = r.temp != null && r.temp >= AREA_SENSOR_THRESHOLDS.tempCritical;
+  const isGas = r.gas != null && r.gas >= AREA_SENSOR_THRESHOLDS.gasCritical;
+  const isFireByFlame = r.fogo > 0;
+  const isFireByAlarm = r.alarme === true && r.temp != null && r.temp >= AREA_SENSOR_THRESHOLDS.tempCritical;
+  const isSmokeAlarm = r.alarme === true && !isFireByFlame && !isFireByAlarm;
+
+  let type: Alert['type'] = 'area';
+  let severity: Alert['severity'] = 'low';
+  let message = '';
+
+  if (isFireByFlame) {
+    type = 'fire'; severity = 'critical';
+    message = `Chama detectada pelo sensor! Temperatura: ${r.temp}°C`;
+  } else if (isFireByAlarm) {
+    type = 'fire'; severity = 'critical';
+    message = `Fogo detectado na área monitorada! Temperatura: ${r.temp}°C`;
+  } else if (isSmokeAlarm) {
+    severity = 'high';
+    message = `Alarme de fumaça/gás ativado! Gás: ${r.gas ?? '--'} ppm`;
+  } else if (isHot) {
+    severity = 'high';
+    message = `Temperatura crítica na área: ${r.temp}°C`;
+  } else if (isGas) {
+    severity = 'high';
+    message = `Nível de gás elevado na área: ${r.gas} ppm`;
+  } else if (r.temp != null && r.temp >= AREA_SENSOR_THRESHOLDS.tempWarning) {
+    severity = 'low';
+    message = `Temperatura moderada na área: ${r.temp}°C`;
+  } else if (r.gas != null && r.gas >= AREA_SENSOR_THRESHOLDS.gasWarning) {
+    severity = 'low';
+    message = `Nível de gás moderado na área: ${r.gas} ppm`;
+  } else {
+    return null;
+  }
+
+  return {
+    id: `area-${r.id || index}`,
+    treeId: 'area',
+    type, severity, message,
+    timestamp: r.created_at || new Date().toISOString(),
+    resolved: false,
+    temperature: r.temp,
+    sensorData: r,
+  };
+}
+
 export default function Dashboard() {
   const [trees, setTrees] = useState<Tree[]>([]);
+  const [areaAlerts, setAreaAlerts] = useState<Alert[]>([]);
+
   useEffect(() => {
     supabase.from('trees').select('*').then(({ data }) => {
       if (data) setTrees(data.map(mapDbTreeToFrontend));
     }).catch(() => {});
+
+    supabase.from('sensor_readings').select('*').is('tree_id', null).limit(100)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const seen = new Map<string, Alert>();
+          data
+            .map((r: any, i: number) => sensorReadingToAlert(r, i))
+            .filter(Boolean)
+            .forEach((a: Alert) => {
+              const key = `${a.type}-${a.severity}`;
+              if (!seen.has(key)) seen.set(key, a);
+            });
+          setAreaAlerts([...seen.values()]);
+        }
+      }).catch(() => {});
   }, []);
 
-  const activeAlerts = mockAlerts.filter(a => !a.resolved);
+  const allAlerts = [...mockAlerts, ...areaAlerts]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const recentAlerts = allAlerts.slice(0, 8);
+  const activeAlerts = allAlerts.filter(a => !a.resolved);
   const criticalTrees = trees.filter(t => t.status === 'critical');
   const warningTrees = trees.filter(t => t.status === 'warning');
 
@@ -47,6 +117,13 @@ export default function Dashboard() {
       case 'low': return <Badge variant="secondary">Baixo</Badge>;
       default: return <Badge variant="outline">Desconhecido</Badge>;
     }
+  };
+
+  const getAlertTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      fire: 'Incêndio', temperature: 'Temperatura', offline: 'Offline', intrusion: 'Intrusão', area: 'Área',
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -114,7 +191,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6 mb-6">
-        {/* MAPA INTERATIVO SUBSTITUÍDO AQUI */}
+        {/* MAPA INTERATIVO */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -123,7 +200,6 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Renderização do nosso novo componente Leaflet */}
             <TreeMap />
           </CardContent>
         </Card>
@@ -143,32 +219,39 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {mockAlerts.slice(0, 8).map((alert) => {
-                const alertTreeNfcMap: Record<string, string> = {
-                  'tree-001': 'NFC-IPE-001', 'tree-002': 'NFC-JAT-002',
-                  'tree-003': 'NFC-MAH-003', 'tree-004': 'NFC-CED-004',
-                  'tree-005': 'NFC-PER-005', 'tree-006': 'NFC-ARO-006',
-                };
-                const tree = trees.find(t => t.nfcId === alertTreeNfcMap[alert.treeId]);
-                return (
-                  <div 
-                    key={alert.id} 
-                    className={`p-3 rounded-lg border ${alert.resolved ? 'bg-gray-50' : 'bg-red-50 border-red-200'}`}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      {getSeverityBadge(alert.severity)}
-                      {alert.resolved && (
-                        <CheckCircle2 className="size-4 text-green-600" />
-                      )}
+              {recentAlerts.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">Nenhum alerta registrado.</p>
+              ) : (
+                recentAlerts.map((alert) => {
+                  const isArea = alert.treeId === 'area';
+                  const tree = isArea ? null : trees.find(t => {
+                    const suffix = alert.treeId.replace('tree-', '');
+                    return t.nfcId.endsWith(suffix);
+                  });
+                  return (
+                    <div 
+                      key={alert.id} 
+                      className={`p-3 rounded-lg border ${alert.resolved ? 'bg-gray-50' : 'bg-red-50 border-red-200'}`}
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        {getSeverityBadge(alert.severity)}
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className="text-[10px]">{getAlertTypeLabel(alert.type)}</Badge>
+                          {isArea && <Badge className="bg-teal-600 text-[10px]">Área</Badge>}
+                          {alert.resolved && <CheckCircle2 className="size-4 text-green-600" />}
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold mb-1">{alert.message}</p>
+                      <p className="text-xs text-gray-600">
+                        {isArea ? 'Monitoramento de Área' : tree?.species}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {alert.timestamp ? new Date(alert.timestamp).toLocaleString('pt-BR') : '--'}
+                      </p>
                     </div>
-                    <p className="text-sm font-semibold mb-1">{alert.message}</p>
-                    <p className="text-xs text-gray-600">{tree?.species}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(alert.timestamp).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
