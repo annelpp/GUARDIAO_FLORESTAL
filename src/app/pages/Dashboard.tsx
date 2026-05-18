@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   TreePine, Wifi, AlertTriangle, Activity, 
   MapPin, TrendingUp, Bell, CheckCircle2 
@@ -10,15 +11,24 @@ import {
   LineChart, Line, AreaChart, Area, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { mockTrees, mockAlerts, temperatureHistory, systemStats } from '../data/mockData';
+import { mockAlerts, temperatureHistory, systemStats } from '../data/mockData';
+import { supabase, mapDbTreeToFrontend } from '../../lib/supabase';
+import type { Tree } from '../data/mockData';
 import { Link } from 'react-router';
 
 import TreeMap from '../components/TreeMap';
 
 export default function Dashboard() {
+  const [trees, setTrees] = useState<Tree[]>([]);
+  useEffect(() => {
+    supabase.from('trees').select('*').then(({ data }) => {
+      if (data) setTrees(data.map(mapDbTreeToFrontend));
+    }).catch(() => {});
+  }, []);
+
   const activeAlerts = mockAlerts.filter(a => !a.resolved);
-  const criticalTrees = mockTrees.filter(t => t.status === 'critical');
-  const warningTrees = mockTrees.filter(t => t.status === 'warning');
+  const criticalTrees = trees.filter(t => t.status === 'critical');
+  const warningTrees = trees.filter(t => t.status === 'warning');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -134,7 +144,12 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {mockAlerts.slice(0, 8).map((alert) => {
-                const tree = mockTrees.find(t => t.id === alert.treeId);
+                const alertTreeNfcMap: Record<string, string> = {
+                  'tree-001': 'NFC-IPE-001', 'tree-002': 'NFC-JAT-002',
+                  'tree-003': 'NFC-MAH-003', 'tree-004': 'NFC-CED-004',
+                  'tree-005': 'NFC-PER-005', 'tree-006': 'NFC-ARO-006',
+                };
+                const tree = trees.find(t => t.nfcId === alertTreeNfcMap[alert.treeId]);
                 return (
                   <div 
                     key={alert.id} 

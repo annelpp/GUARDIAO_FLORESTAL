@@ -33,12 +33,13 @@ export interface Tree {
 export interface Alert {
   id: string;
   treeId: string;
-  type: 'fire' | 'temperature' | 'offline' | 'intrusion';
+  type: 'fire' | 'temperature' | 'offline' | 'intrusion' | 'area';
   severity: 'low' | 'medium' | 'high' | 'critical';
   message: string;
   timestamp: string;
   resolved: boolean;
   temperature?: number;
+  sensorData?: { temp: number; umidade: number; gas: number; alarme: boolean; fogo: number; msg: string };
 }
 
 export interface ValidationRecord {

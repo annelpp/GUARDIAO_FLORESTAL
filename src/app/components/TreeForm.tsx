@@ -15,6 +15,7 @@ export default function TreeForm({ initialData, onSave, onCancel }: TreeFormProp
   const [formData, setFormData] = useState<Partial<Tree>>({
     species: '',
     nfcId: '',
+    age: 0,
     manejo: 'sustentável',
     diameter: 0,
     height: 0,
@@ -100,6 +101,27 @@ export default function TreeForm({ initialData, onSave, onCancel }: TreeFormProp
               required 
             />
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="age">Idade (anos)</Label>
+          <Input 
+            id="age" 
+            type="number"
+            value={formData.age}
+            onChange={(e) => setFormData({...formData, age: Number(e.target.value)})}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="manejo">Manejo</Label>
+          <Input 
+            id="manejo" 
+            value={formData.manejo}
+            onChange={(e) => setFormData({...formData, manejo: e.target.value})}
+            placeholder="sustentável / permanente"
+          />
         </div>
       </div>
 
