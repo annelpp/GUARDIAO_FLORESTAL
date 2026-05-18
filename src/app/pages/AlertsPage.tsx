@@ -164,15 +164,15 @@ export default function AlertsPage() {
       return t.nfcId.endsWith(suffix);
     });
     return (
-      <Card key={alert.id} className={`${!alert.resolved ? 'border-l-4' : ''} ${alert.severity === 'critical' ? 'border-l-red-600 bg-red-50' :
-        alert.severity === 'high' ? 'border-l-orange-600 bg-orange-50' :
-          alert.severity === 'medium' ? 'border-l-yellow-600 bg-yellow-50' :
+      <Card key={alert.id} className={`${!alert.resolved ? 'border-l-4' : ''} ${alert.severity === 'critical' ? 'border-l-red-600 bg-red-50 dark:bg-red-900/20' :
+        alert.severity === 'high' ? 'border-l-orange-600 bg-orange-50 dark:bg-orange-900/20' :
+          alert.severity === 'medium' ? 'border-l-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' :
             'border-l-gray-400'
         }`}>
         <CardContent className="pt-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <div className={`p-3 rounded-full ${!alert.resolved ? 'bg-white' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-full ${!alert.resolved ? 'bg-white dark:bg-gray-800' : 'bg-gray-100 dark:bg-gray-800'}`}>
                 {getAlertIcon(alert.type)}
               </div>
               <div className="flex-1 min-w-0">
@@ -185,7 +185,7 @@ export default function AlertsPage() {
                   )}
                 </div>
                 <h3 className="font-bold text-lg mb-1">{alert.message}</h3>
-                <div className="space-y-1 text-sm text-gray-600">
+                <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                   {isArea ? (
                     alert.sensorData && (
                       <>
@@ -205,7 +205,7 @@ export default function AlertsPage() {
                     </>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{alert.timestamp ? new Date(alert.timestamp).toLocaleString('pt-BR') : '--'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{alert.timestamp ? new Date(alert.timestamp).toLocaleString('pt-BR') : '--'}</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
@@ -232,7 +232,7 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Central de Alertas</h1>
-        <p className="text-gray-600">Monitoramento e gerenciamento de alertas em tempo real</p>
+        <p className="text-gray-600 dark:text-gray-400">Monitoramento e gerenciamento de alertas em tempo real</p>
       </div>
 
       <TreeHistoryModal tree={historyTree} isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
@@ -243,7 +243,7 @@ export default function AlertsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Alertas Ativos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Alertas Ativos</p>
                 <p className="text-3xl font-bold text-red-600">{activeAlerts.length}</p>
               </div>
               <AlertTriangle className="size-10 text-red-600" />
@@ -254,7 +254,7 @@ export default function AlertsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Críticos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Críticos</p>
                 <p className="text-3xl font-bold text-red-700">{criticalAlerts.length}</p>
               </div>
               <Flame className="size-10 text-red-700" />
@@ -265,7 +265,7 @@ export default function AlertsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Alertas de Área</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Alertas de Área</p>
                 <p className="text-3xl font-bold text-teal-600">{areaAlerts.length}</p>
               </div>
               <Wind className="size-10 text-teal-600" />
@@ -276,7 +276,7 @@ export default function AlertsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Resolvidos Hoje</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Resolvidos Hoje</p>
                 <p className="text-3xl font-bold text-green-600">3</p>
               </div>
               <CheckCircle2 className="size-10 text-green-600" />
@@ -334,7 +334,7 @@ export default function AlertsPage() {
               <Card>
                 <CardContent className="py-8 text-center">
                   <CheckCircle2 className="size-10 text-green-600 mx-auto mb-2" />
-                  <p className="text-gray-600 font-semibold">Nenhum alerta de árvore encontrado</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-semibold">Nenhum alerta de árvore encontrado</p>
                 </CardContent>
               </Card>
             )}
@@ -356,8 +356,8 @@ export default function AlertsPage() {
               <Card>
                 <CardContent className="py-8 text-center">
                   <CheckCircle2 className="size-10 text-teal-600 mx-auto mb-2" />
-                  <p className="text-gray-600 font-semibold">Nenhum alerta de área no momento</p>
-                  <p className="text-sm text-gray-500">Conecte o Arduino na página de validação para gerar leituras.</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-semibold">Nenhum alerta de área no momento</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Conecte o Arduino na página de validação para gerar leituras.</p>
                 </CardContent>
               </Card>
             )}
@@ -366,13 +366,13 @@ export default function AlertsPage() {
       </div>
 
       {/* Protocolos de Resposta */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50">
         <CardHeader>
           <CardTitle className="text-lg">Protocolos de Resposta</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Flame className="size-5 text-red-600" />
                 <h4 className="font-bold">Alerta de Incêndio</h4>
@@ -384,7 +384,7 @@ export default function AlertsPage() {
                 <li>Documentar extensão do dano</li>
               </ol>
             </div>
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Thermometer className="size-5 text-orange-600" />
                 <h4 className="font-bold">Temperatura Elevada</h4>
@@ -396,7 +396,7 @@ export default function AlertsPage() {
                 <li>Preparar recursos preventivos</li>
               </ol>
             </div>
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <WifiOff className="size-5 text-gray-600" />
                 <h4 className="font-bold">Sensor Offline</h4>
@@ -408,7 +408,7 @@ export default function AlertsPage() {
                 <li>Substituir bateria se necessário</li>
               </ol>
             </div>
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="size-5 text-purple-600" />
                 <h4 className="font-bold">Intrusão Detectada (A ser implementado)</h4>
@@ -420,7 +420,7 @@ export default function AlertsPage() {
                 <li>Reforçar monitoramento da área</li>
               </ol>
             </div>
-            <div className="bg-white rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Wind className="size-5 text-teal-600" />
                 <h4 className="font-bold">Alerta de Área</h4>

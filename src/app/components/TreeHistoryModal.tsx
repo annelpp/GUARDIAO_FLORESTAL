@@ -82,27 +82,27 @@ export default function TreeHistoryModal({ tree, isOpen, onClose }: TreeHistoryM
         </DialogHeader>
         
         <div className="py-4">
-          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border mb-6">
+          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border dark:border-gray-700 mb-6">
             <div>
-              <p className="text-sm text-gray-500">ID NFC</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">ID NFC</p>
               <p className="font-mono font-semibold">{tree?.nfcId}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Data de Registro</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Data de Registro</p>
               <p className="font-semibold">{tree?.registrationDate ? new Date(tree.registrationDate).toLocaleDateString('pt-BR') : '-'}</p>
             </div>
           </div>
 
           {loading ? (
-            <div className="text-center py-10 text-gray-500">
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <p>Carregando histórico...</p>
             </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <p>Nenhum evento registrado no histórico desta árvore ainda.</p>
             </div>
           ) : (
-            <div className="relative border-l-2 border-gray-200 ml-4 pl-6 space-y-8">
+            <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ml-4 pl-6 space-y-8">
               {events.map((event, index) => (
                 <div key={`${event.type}-${event.id}-${index}`} className="relative">
                   <div className={`absolute -left-[35px] p-1.5 rounded-full border-2 border-white ${
@@ -113,18 +113,18 @@ export default function TreeHistoryModal({ tree, isOpen, onClose }: TreeHistoryM
                     {event.type === 'alert' ? <AlertTriangle className="size-4" /> : <ShieldCheck className="size-4" />}
                   </div>
 
-                  <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-white dark:bg-gray-800 dark:border-gray-700 border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                      <h4 className="font-bold text-gray-800">{event.title}</h4>
-                      <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">
+                      <h4 className="font-bold text-gray-800 dark:text-gray-200">{event.title}</h4>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                         {event.date.toLocaleString('pt-BR')}
                       </span>
                     </div>
                     
-                    <p className="text-gray-600 text-sm mb-3">{event.description}</p>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{event.description}</p>
                     
                     <div className="flex flex-wrap items-center gap-3 border-t pt-3 mt-2">
-                      <Badge variant="outline" className="text-gray-600 bg-gray-50">
+                      <Badge variant="outline" className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
                         {event.type === 'alert' ? 'Detectado por: ' : 'Fiscal: '} 
                         <span className="font-semibold ml-1">{event.author}</span>
                       </Badge>

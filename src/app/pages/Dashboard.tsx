@@ -134,12 +134,12 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total de Árvores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total de Árvores</p>
                 <p className="text-3xl font-bold">{systemStats.totalTrees}</p>
               </div>
               <TreePine className="size-10 text-green-600" />
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               <TrendingUp className="size-3 inline mr-1" />
               +12 este mês
             </p>
@@ -150,7 +150,7 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Sensores Ativos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Sensores Ativos</p>
                 <p className="text-3xl font-bold">{systemStats.activeSensors}</p>
               </div>
               <Wifi className="size-10 text-blue-600" />
@@ -163,7 +163,7 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Alertas Ativos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Alertas Ativos</p>
                 <p className="text-3xl font-bold text-red-600">{activeAlerts.length}</p>
               </div>
               <AlertTriangle className="size-10 text-red-600" />
@@ -180,9 +180,9 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Área Monitorada</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Área Monitorada</p>
                 <p className="text-3xl font-bold">{systemStats.areaMonitored}</p>
-                <p className="text-xs text-gray-500">hectares</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">hectares</p>
               </div>
               <Activity className="size-10 text-purple-600" />
             </div>
@@ -220,7 +220,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {recentAlerts.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">Nenhum alerta registrado.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum alerta registrado.</p>
               ) : (
                 recentAlerts.map((alert) => {
                   const isArea = alert.treeId === 'area';
@@ -231,7 +231,7 @@ export default function Dashboard() {
                   return (
                     <div 
                       key={alert.id} 
-                      className={`p-3 rounded-lg border ${alert.resolved ? 'bg-gray-50' : 'bg-red-50 border-red-200'}`}
+                      className={`p-3 rounded-lg border ${alert.resolved ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50'}`}
                     >
                       <div className="flex items-start justify-between mb-1">
                         {getSeverityBadge(alert.severity)}
@@ -242,10 +242,10 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <p className="text-sm font-semibold mb-1">{alert.message}</p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
                         {isArea ? 'Monitoramento de Área' : tree?.species}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {alert.timestamp ? new Date(alert.timestamp).toLocaleString('pt-BR') : '--'}
                       </p>
                     </div>
@@ -296,12 +296,12 @@ export default function Dashboard() {
                     <div className={`w-3 h-3 rounded-full ${getStatusColor(tree.status)}`} />
                     <div>
                       <p className="font-semibold">{tree.species}</p>
-                      <p className="text-sm text-gray-600">ID: {tree.nfcId}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">ID: {tree.nfcId}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg">{tree.temperature}°C</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       {tree.status === 'critical' ? 'Temperatura Crítica' : 'Temperatura Elevada'}
                     </p>
                   </div>
