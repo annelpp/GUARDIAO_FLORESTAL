@@ -110,6 +110,7 @@ export default function ValidationPage() {
   // ==========================================
   const [searchParams] = useSearchParams();
   const treeIdFromUrl = searchParams.get('treeId');
+  const nfcIdFromUrl = searchParams.get('nfc_id');
 
   // ==========================================
   // ESTADO 1: MONITORAMENTO DE ÁREA (ARDUINO FÍSICO)
@@ -136,12 +137,12 @@ export default function ValidationPage() {
 
   // === EFEITO DE ROLAGEM AUTOMÁTICA ===
   useEffect(() => {
-    if (treeIdFromUrl && auditoriaRef.current) {
+    if ((treeIdFromUrl || nfcIdFromUrl) && auditoriaRef.current) {
       setTimeout(() => {
         auditoriaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 400);
     }
-  }, [treeIdFromUrl]);
+  }, [treeIdFromUrl, nfcIdFromUrl]);
 
   // Captura snapshots dos sensores no histórico + salva no Supabase
   useEffect(() => {
@@ -290,8 +291,11 @@ export default function ValidationPage() {
   useEffect(() => {
     if (treeIdFromUrl && localTrees.some(t => t.id === treeIdFromUrl)) {
       setSelectedTreeId(treeIdFromUrl);
+    } else if (nfcIdFromUrl) {
+      const match = localTrees.find(t => t.nfcId.toLowerCase() === nfcIdFromUrl.toLowerCase());
+      if (match) setSelectedTreeId(match.id);
     }
-  }, [treeIdFromUrl, localTrees]);
+  }, [treeIdFromUrl, nfcIdFromUrl, localTrees]);
 
   useEffect(() => {
     if (logEndRef.current) {
@@ -511,7 +515,7 @@ export default function ValidationPage() {
   const startTreeValidation = () => {
     if (!fiscalName || !fiscalId || !selectedTreeId) return;
 
-    if (treeIdFromUrl) {
+    if (treeIdFromUrl || nfcIdFromUrl) {
       setNfcVerified(true);
       setTreeStep('inspection');
       playFeedback('success');
@@ -530,7 +534,7 @@ export default function ValidationPage() {
   const resetTreeValidation = () => {
     setTreeStep('idle');
     // Só reseta a árvore se ELA NÃO VEIO PELA URL NFC ATENÇÃO AQUI HEIN
-    if (!treeIdFromUrl) {
+    if (!treeIdFromUrl && !nfcIdFromUrl) {
       setSelectedTreeId(null);
     }
     setNfcVerified(false);
@@ -622,7 +626,7 @@ export default function ValidationPage() {
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <ShieldCheck className="text-green-600 size-8" /> Central de Operações em Campo
         </h1>
-        <p className="text-gray-600">Monitore o perímetro ligando o cabo USB-C e realize auditorias individuais (NFC).</p>
+        <p className="text-gray-600 dark:text-gray-400">Monitore o perímetro ligando o cabo USB-C e realize auditorias individuais (NFC).</p>
       </div>
 
       <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:items-start">
@@ -630,7 +634,7 @@ export default function ValidationPage() {
         {/* ========================================== */}
         {/* COLUNA ESQUERDA: ESTAÇÃO DE ÁREA (ARDUINO FÍSICO) */}
         {/* ========================================== */}
-        <Card className="border-blue-200 bg-slate-50 shadow-md static lg:sticky lg:top-6 h-fit z-10">
+        <Card className="border-blue-200 dark:border-blue-900/50 bg-slate-50 dark:bg-slate-900 shadow-md static lg:sticky lg:top-6 h-fit z-10">
           <CardHeader className="bg-blue-600 text-white rounded-t-lg pb-4">
             <CardTitle className="flex items-center justify-between text-lg">
               <span className="flex items-center gap-2"><Activity className="size-5" /> Estação de Área (Física via USB)</span>
@@ -645,7 +649,7 @@ export default function ValidationPage() {
             {!isConnected ? (
               <div className="space-y-3 text-center py-6">
                 <Usb className="size-12 mx-auto text-blue-300" />
-                <p className="text-sm text-slate-600 px-4">Conecte o Arduino/ESP32 à porta USB do seu dispositivo (PC ou Celular Android) para ler os sensores em campo.</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 px-4">Conecte o Arduino/ESP32 à porta USB do seu dispositivo (PC ou Celular Android) para ler os sensores em campo.</p>
                 {serialError && <p className="text-sm text-red-600 font-bold">{serialError}</p>}
                 <Button onClick={connectPhysicalSensor} className="bg-blue-600 hover:bg-blue-700 w-full mt-2 h-12 text-md">
                   Conectar Cabo USB-C
@@ -680,9 +684,9 @@ export default function ValidationPage() {
 
                 {/* 2. CAIXA DE MENSAGEM */}
                 {sensorData && (
-                  <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${sensorData.alarme ? 'bg-red-50 border-red-200 text-red-700' :
-                    sensorData.temp !== null && sensorData.temp >= 30 ? 'bg-orange-50 border-orange-200 text-orange-700' :
-                      'bg-white border-slate-200 text-slate-700'
+                  <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${sensorData.alarme ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400' :
+                    sensorData.temp !== null && sensorData.temp >= 30 ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50 text-orange-700 dark:text-orange-400' :
+                      'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-300'
                     }`}>
                     <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp !== null && sensorData.temp >= 30 ? 'text-orange-500' : 'text-blue-500'}`} />
                     Status da Área: <strong>{sensorData.msg}</strong>
@@ -691,31 +695,31 @@ export default function ValidationPage() {
 
                 {/* 3. OS 4 CARTÕES DE DADOS FÍSICOS */}
                 <div className="grid grid-cols-3 gap-2">
-                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'bg-red-100 border-red-500' :
-                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 border-orange-400' :
-                      'bg-white'
+                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'bg-red-100 dark:bg-red-900/30 border-red-500' :
+                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-400' :
+                      'bg-white dark:bg-gray-800'
                     }`}>
                     <Thermometer className={`size-5 mb-1 ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-600' :
                       sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-600' :
                         'text-orange-500'
                       }`} />
-                    <span className={`font-bold text-sm ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-700' :
-                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-700' :
-                        'text-slate-800'
+                    <span className={`font-bold text-sm ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-700 dark:text-red-400' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-700 dark:text-orange-400' :
+                        'text-slate-800 dark:text-slate-200'
                       }`}>
                       {sensorData?.temp !== null ? sensorData.temp.toFixed(1) : '--'}°C
                     </span>
                   </div>
 
-                  <div className="bg-white p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20">
-                    <Wind className={`size-5 mb-1 ${sensorData.alarme ? 'text-red-500' : 'text-slate-500'}`} />
-                    <span className={`font-bold text-xs ${sensorData.alarme ? 'text-red-600' : 'text-slate-600'}`}>{sensorData.gasStatus}</span>
+                  <div className="bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700 text-center shadow-sm flex flex-col items-center justify-center h-20">
+                    <Wind className={`size-5 mb-1 ${sensorData.alarme ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`} />
+                    <span className={`font-bold text-xs ${sensorData.alarme ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>{sensorData.gasStatus}</span>
                   </div>
 
                   {/* CARTÃO DE STATUS GERAL DA ESTAÇÃO */}
-                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.alarme ? 'bg-red-100 border-red-500' :
-                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 border-orange-400' :
-                      'bg-white'
+                  <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.alarme ? 'bg-red-100 dark:bg-red-900/30 border-red-500' :
+                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-400' :
+                      'bg-white dark:bg-gray-800'
                     }`}>
                     <Flame className={`size-5 mb-1 ${sensorData?.alarme ? 'text-red-600' :
                       sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-500' :
@@ -771,7 +775,7 @@ export default function ValidationPage() {
                 </div>
 
                 {/* AVISO DE INSTABILIDADE */}
-                <div className="flex items-start gap-2 px-2 py-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded">
+                <div className="flex items-start gap-2 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded">
                   <AlertTriangle className="size-3.5 mt-0.5 shrink-0 text-amber-500" />
                   <span>A conexão USB com o Arduino pode apresentar instabilidades dependendo do cabo, da porta e do dispositivo utilizado. Mantenha o cabo firmemente conectado.</span>
                 </div>
@@ -782,14 +786,14 @@ export default function ValidationPage() {
             {/* HISTÓRICO DE LEITURAS DOS SENSORES */}
             {/* ========================================== */}
             <details className="group">
-              <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700 transition-colors list-none">
+              <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors list-none">
                 <Clock className="size-3.5" />
                 Histórico de Leituras ({sensorHistory.length})
                 <span className="flex-1" />
                 {sensorHistory.length > 0 && (
                   <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
                     <AlertDialogTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-50 -mr-1">
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 -mr-1">
                         Limpar
                       </Button>
                     </AlertDialogTrigger>
@@ -799,13 +803,13 @@ export default function ValidationPage() {
                           <AlertTriangle className="size-5" /> Limpar Histórico de Leituras
                         </AlertDialogTitle>
                         <AlertDialogDescription className="space-y-3 pt-2">
-                          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                          <p className="text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded p-3">
                             <strong>⚠️ Atenção:</strong> Para uma validação real dos dados coletados, mantenha o histórico por no mínimo <strong>3 dias consecutivos</strong> de leituras. Isso permite identificar padrões, anomalias e tendências térmicas da região monitorada.
                           </p>
-                          <p className="text-sm text-slate-600">
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
                             A limpeza apaga todos os registros de leitura <strong>da sessão atual e do banco de dados</strong>. Esta ação é irreversível.
                           </p>
-                          <p className="text-sm text-slate-500 italic">
+                          <p className="text-sm text-slate-500 dark:text-slate-400 italic">
                             Recomendamos exportar os dados antes de limpar, caso necessário para relatórios futuros.
                           </p>
                         </AlertDialogDescription>
@@ -823,7 +827,7 @@ export default function ValidationPage() {
               </summary>
               <div className="mt-3 max-h-96 overflow-y-auto space-y-1.5">
                 {sensorHistory.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-4">Nenhuma leitura registrada ainda. Conecte o Arduino para começar.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">Nenhuma leitura registrada ainda. Conecte o Arduino para começar.</p>
                 ) : (
                   [...sensorHistory].reverse().map((snap, idx) => {
                     const realIdx = sensorHistory.length - 1 - idx;
@@ -836,9 +840,9 @@ export default function ValidationPage() {
                         className={cn(
                           "rounded-lg border shadow-sm transition-all cursor-pointer",
                           isExpanded ? "ring-1" : "hover:border-slate-300",
-                          isAlarm ? "bg-red-50 border-red-200 ring-red-200" :
-                            isWarning ? "bg-orange-50 border-orange-200 ring-orange-200" :
-                              isExpanded ? "border-blue-300 ring-blue-200" : "bg-white border-slate-200"
+                          isAlarm ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 ring-red-200" :
+                            isWarning ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50 ring-orange-200" :
+                              isExpanded ? "border-blue-300 dark:border-blue-800 ring-blue-200 dark:ring-blue-800" : "bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700"
                         )}
                         onClick={() => setExpandedSnapIdx(isExpanded ? null : realIdx)}
                       >
@@ -856,7 +860,7 @@ export default function ValidationPage() {
                               <div className="flex items-center gap-2">
                                 <span className={cn(
                                   "font-bold text-sm font-mono",
-                                  isAlarm ? "text-red-700" : isWarning ? "text-orange-700" : "text-slate-800"
+                                  isAlarm ? "text-red-700 dark:text-red-400" : isWarning ? "text-orange-700 dark:text-orange-400" : "text-slate-800 dark:text-slate-200"
                                 )}>
                                   {snap.temp?.toFixed(1)}°C
                                 </span>
@@ -867,27 +871,27 @@ export default function ValidationPage() {
                                   {isAlarm ? 'Perigo' : isWarning ? 'Atenção' : 'Normal'}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-slate-400 truncate">{snap.msg}</p>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{snap.msg}</p>
                             </div>
                           </div>
-                          <span className="text-slate-400 font-mono text-[10px] shrink-0 ml-2">
+                          <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px] shrink-0 ml-2">
                             {snap.recorded_at ? new Date(snap.recorded_at).toLocaleTimeString('pt-BR') : '--:--:--'}
                           </span>
                         </div>
 
                         {/* DETALHES EXPANSÍVEIS */}
                         {isExpanded && (
-                          <div className="px-3 pb-3 border-t border-slate-100 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="px-3 pb-3 border-t border-slate-100 dark:border-gray-700 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
                             <div className="grid grid-cols-2 gap-2 text-[11px]">
-                              <div className="flex items-center gap-1.5 text-slate-600">
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                                 <Thermometer className="size-3.5 text-orange-500" />
                                 <span>Temperatura: <strong>{snap.temp?.toFixed(1)}°C</strong></span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-slate-600">
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                                 <Wind className="size-3.5 text-slate-500" />
                                 <span>Gás: <strong>{snap.gasStatus}</strong></span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-slate-600">
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                                 {isAlarm ? (
                                   <Flame className="size-3.5 text-red-500" />
                                 ) : (
@@ -895,7 +899,7 @@ export default function ValidationPage() {
                                 )}
                                 <span>Alarme: <strong>{isAlarm ? 'Ativo' : 'Inativo'}</strong></span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-slate-600">
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                                 <Clock className="size-3.5 text-slate-400" />
                                 <span>
                                   {snap.recorded_at ? new Date(snap.recorded_at).toLocaleString('pt-BR') : '--/--/---- --:--:--'}
@@ -903,7 +907,7 @@ export default function ValidationPage() {
                               </div>
                             </div>
                             {snap.msg && snap.msg !== 'Monitoramento inativo' && (
-                              <div className="text-[11px] text-slate-600 bg-slate-50 rounded px-2 py-1.5 border border-slate-100 italic">
+                              <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-gray-800 rounded px-2 py-1.5 border border-slate-100 dark:border-gray-700 italic">
                                 "{snap.msg}"
                               </div>
                             )}
@@ -922,7 +926,7 @@ export default function ValidationPage() {
         {/* COLUNA DIREITA: AUDITORIA DE ÁRVORE (NFC) */}
         {/* ========================================== */}
         <div ref={auditoriaRef} className="scroll-mt-24">
-          <Card className="border-green-200 shadow-sm">
+          <Card className="border-green-200 dark:border-green-900/50 shadow-sm">
             <CardHeader className="bg-green-600 text-white rounded-t-lg pb-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="size-5" /> Auditoria Individual (Árvores)
@@ -993,17 +997,17 @@ export default function ValidationPage() {
                 <Label>Árvore Alvo da Inspeção</Label>
 
                 {/* Banner de Confirmação NFC */}
-                {treeIdFromUrl && (
-                  <div className="p-3 border rounded-lg bg-green-50 text-green-800 flex items-center justify-between mb-2 border-green-200">
+                {(treeIdFromUrl || nfcIdFromUrl) && (
+                  <div className="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 flex items-center justify-between mb-2 border-green-200 dark:border-green-800/50">
                     <div className="flex items-center gap-2">
                       <Smartphone className="size-4" />
                       <span className="font-semibold text-sm">Identidade Confirmada via NFC</span>
                     </div>
-                    <Badge className="bg-green-600">ID: {selectedTreeId}</Badge>
+                    <Badge className="bg-green-600">{fullTreeData?.nfcId || selectedTreeId}</Badge>
                   </div>
                 )}
 
-                <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle' || !!treeIdFromUrl}>
+                <Select value={selectedTreeId || ''} onValueChange={setSelectedTreeId} disabled={treeStep !== 'idle' || !!(treeIdFromUrl || nfcIdFromUrl)}>
                   <SelectTrigger><SelectValue placeholder="Selecione a árvore encontrada..." /></SelectTrigger>
                   <SelectContent>
                     {localTrees.map(t => <SelectItem key={t.id} value={t.id}>{t.species} ({t.nfcId})</SelectItem>)}
@@ -1013,9 +1017,9 @@ export default function ValidationPage() {
 
               {/* === REPORT COMPLETO DA ÁRVORE === */}
               {selectedTreeId && fullTreeData && (
-                <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300 shadow-sm">
-                  <div className="flex items-center justify-between border-b pb-2 border-slate-200">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50 dark:bg-gray-800/50 rounded-xl border border-slate-200 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-300 shadow-sm">
+                  <div className="flex items-center justify-between border-b pb-2 border-slate-200 dark:border-gray-700">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                       <Info className="size-4 text-blue-500" /> Ficha Técnica da Espécie
                     </h3>
                     <Badge variant={fullTreeData.status === 'healthy' ? 'outline' : 'destructive'} className={fullTreeData.status === 'healthy' ? 'bg-green-100 text-green-700 border-green-200' : ''}>
@@ -1025,37 +1029,37 @@ export default function ValidationPage() {
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2 text-sm mt-2">
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">Espécie</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Espécie</span>
                       <span className="font-medium truncate" title={fullTreeData.species}>{fullTreeData.species}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">Idade Estimada</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Idade Estimada</span>
                       <span className="font-medium">{fullTreeData.age || '12 anos'}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">NFC Tag</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">NFC Tag</span>
                       <span className="font-medium text-blue-600">{fullTreeData.nfcId}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">Coordenadas</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Coordenadas</span>
                       <span className="font-medium flex items-center gap-1"><MapPin className="size-3 text-slate-400" /> {fullTreeData.location}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">Dimensões Base</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Dimensões Base</span>
                       <span className="font-medium">
                         D: {fullTreeData.baseDiameter || '45cm'} | A: {fullTreeData.baseHeight || '15m'}
                       </span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">Última Auditoria</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Última Auditoria</span>
                       <span className="font-medium flex items-center gap-1"><Clock className="size-3 text-slate-400" /> {fullTreeData.lastValidation}</span>
                     </div>
                   </div>
 
                   {/* SEÇÃO DE DADOS AMBIENTAIS E BIOMASSA HISTÓRICA */}
-                  <div className="mt-3 p-3 bg-white rounded border border-slate-200 flex flex-col gap-2">
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border border-slate-200 dark:border-gray-700 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Contexto Ambiental Local</span>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Contexto Ambiental Local</span>
                     </div>
                     <div className="flex items-center gap-4 text-xs">
                       <div className="flex items-center gap-1">
@@ -1073,9 +1077,9 @@ export default function ValidationPage() {
                     </div>
                   </div>
 
-                  <div className="mt-2 p-2 bg-white rounded border border-slate-200">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Histórico Recente</p>
-                    <ul className="text-[11px] space-y-1 text-slate-600">
+                  <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-slate-200 dark:border-gray-700">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Histórico Recente</p>
+                    <ul className="text-[11px] space-y-1 text-slate-600 dark:text-slate-400">
                       <li className="flex items-center gap-2">🟢 12/03/24 - Nenhuma anomalia detectada.</li>
                       <li className="flex items-center gap-2">🟡 05/02/24 - Stress hídrico leve detectado.</li>
                     </ul>
@@ -1089,7 +1093,7 @@ export default function ValidationPage() {
                   className="w-full bg-green-600 hover:bg-green-700 h-12 text-md shadow-md transition-all"
                   disabled={!fiscalName || !fiscalId || !selectedTreeId}
                 >
-                  {treeIdFromUrl ? (
+                  {(treeIdFromUrl || nfcIdFromUrl) ? (
                     <>
                       <CheckSquare className="size-5 mr-2" /> Iniciar Auditoria
                     </>
@@ -1102,27 +1106,27 @@ export default function ValidationPage() {
               )}
 
               {treeStep !== 'idle' && (
-                <Alert className={nfcVerified ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}>
+                <Alert className={nfcVerified ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50' : 'bg-slate-50 dark:bg-gray-800 border-slate-200 dark:border-gray-700'}>
                   <div className="flex items-center gap-3">
                     {nfcVerified ? <CheckCircle2 className="size-5 text-green-600" /> : <div className="size-5 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />}
                     <AlertDescription>
-                      {nfcVerified ? <span className="text-green-800 font-semibold">✓ Localização e NFC Confirmados</span> : <span className="text-slate-600">Aproximando celular da Tag...</span>}
+                      {nfcVerified ? <span className="text-green-800 dark:text-green-300 font-semibold">✓ Localização e NFC Confirmados</span> : <span className="text-slate-600 dark:text-slate-400">Aproximando celular da Tag...</span>}
                     </AlertDescription>
                   </div>
                 </Alert>
               )}
 
               {treeStep === 'inspection' && (
-                <div className="space-y-5 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <div className="space-y-5 pt-4 border-t border-slate-100 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <AlertTriangle className="size-5 text-yellow-500" /> Check-list Humano
                   </h3>
 
                   {/* 1. SINAIS DE INFRAÇÃO */}
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <p className="font-semibold text-sm text-yellow-800 mb-3">Sinais de Infrações</p>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
+                    <p className="font-semibold text-sm text-yellow-800 dark:text-yellow-300 mb-3">Sinais de Infrações</p>
                     <div className="space-y-3">
-                      <div className="flex items-center space-x-2 bg-white p-2 rounded border">
+                      <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-700">
                         <Checkbox id="illegalCutSigns" checked={inspectionData.illegalCutSigns} onCheckedChange={(c) => setInspectionData(prev => ({ ...prev, illegalCutSigns: c === true }))} />
                         <label htmlFor="illegalCutSigns" className="text-sm font-bold text-red-600 cursor-pointer">Identificado Sinais de Corte Ilegal</label>
                       </div>
@@ -1130,8 +1134,8 @@ export default function ValidationPage() {
                   </div>
 
                   {/* 2. BLOCO DE BIOMETRIA E BIOMASSA */}
-                  <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-4 shadow-sm">
-                    <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                  <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-slate-200 dark:border-gray-700 space-y-4 shadow-sm">
+                    <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2">
                       <Activity className="size-4 text-green-600" /> Biometria e Cálculo de Biomassa Atual
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -1158,9 +1162,9 @@ export default function ValidationPage() {
                     </div>
 
                     {/* VISUALIZADOR DE BIOMASSA EM TEMPO REAL */}
-                    <div className="p-3 bg-green-50 rounded border border-green-200 flex justify-between items-center">
-                      <span className="text-sm text-green-800 font-medium">Biomassa Calculada (Atual):</span>
-                      <span className="text-lg font-bold text-green-700">
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800/50 flex justify-between items-center">
+                      <span className="text-sm text-green-800 dark:text-green-300 font-medium">Biomassa Calculada (Atual):</span>
+                      <span className="text-lg font-bold text-green-700 dark:text-green-400">
                         {calcularBiomassa(inspectionData.currentDiameter, inspectionData.currentHeight) || 'Aguardando medidas...'}
                       </span>
                     </div>
@@ -1173,7 +1177,7 @@ export default function ValidationPage() {
                   </div>
 
                   {/* 4. RESUMO DO AMBIENTE IOT */}
-                  <div className="p-3 bg-slate-50 rounded border text-xs text-slate-600">
+                  <div className="p-3 bg-slate-50 dark:bg-gray-800 rounded border dark:border-gray-700 text-xs text-slate-600 dark:text-slate-300">
                     <strong>Resumo do Certificado:</strong> Será anexado a esta auditoria o estado ambiental fornecido pela <em>Estação de Área</em> via USB.
                     Status atual: <span className={sensorData?.alarme ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{sensorData?.alarme ? 'PERIGO (FUMAÇA)' : 'SEGURO'}</span>.
                   </div>
@@ -1191,16 +1195,16 @@ export default function ValidationPage() {
               {/* ========================================== */}
               {/* HISTÓRICO DE VALIDAÇÕES */}
               {/* ========================================== */}
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-slate-200 dark:border-gray-700">
                 <details className="group">
-                  <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700 transition-colors list-none">
+                  <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors list-none">
                     <FileText className="size-3.5" />
                     Histórico de Validações ({validationHistory.length})
                     <ChevronsUpDown className="size-3 ml-auto group-open:rotate-180 transition-transform" />
                   </summary>
                   <div className="mt-3 max-h-96 overflow-y-auto space-y-2">
                     {validationHistory.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-4">Nenhuma validação realizada ainda.</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">Nenhuma validação realizada ainda.</p>
                     ) : (
                       validationHistory.map((v) => {
                         const tree = localTrees.find(t => t.id === v.treeId);
@@ -1212,8 +1216,8 @@ export default function ValidationPage() {
                             key={v.id}
                             className={cn(
                               "rounded-lg border shadow-sm transition-all cursor-pointer",
-                              isExpanded ? "border-green-300 ring-1 ring-green-200" : "border-slate-200 hover:border-slate-300",
-                              v.status === 'approved' ? "bg-white" : v.status === 'rejected' ? "bg-red-50" : "bg-yellow-50"
+                              isExpanded ? "border-green-300 dark:border-green-800 ring-1 ring-green-200 dark:ring-green-800" : "border-slate-200 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600",
+                              v.status === 'approved' ? "bg-white dark:bg-gray-800" : v.status === 'rejected' ? "bg-red-50 dark:bg-red-900/20" : "bg-yellow-50 dark:bg-yellow-900/20"
                             )}
                             onClick={() => setExpandedValId(isExpanded ? null : v.id)}
                           >
@@ -1223,8 +1227,8 @@ export default function ValidationPage() {
                                 <div className="flex-1 min-w-0">
                                   {treeName ? (
                                     <>
-                                      <p className="text-sm font-bold text-slate-800 truncate">{treeName}</p>
-                                      <p className="text-[11px] text-slate-400 font-mono">{treeNfcId}</p>
+                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{treeName}</p>
+                                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">{treeNfcId}</p>
                                     </>
                                   ) : (
                                     <p className="text-sm text-slate-400 italic">Árvore não encontrada</p>
@@ -1232,14 +1236,14 @@ export default function ValidationPage() {
                                 </div>
                                 <Badge className={cn(
                                   "shrink-0",
-                                  v.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
-                                    v.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                                      'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                  v.status === 'approved' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50' :
+                                    v.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50' :
+                                      'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50'
                                 )}>
                                   {v.status === 'approved' ? 'Aprovado' : v.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
                                 </Badge>
                               </div>
-                              <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                              <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
                                 <span className="flex items-center gap-1">
                                   <User className="size-3" /> {v.fiscalName}
                                 </span>
@@ -1252,9 +1256,9 @@ export default function ValidationPage() {
 
                             {/* DETALHES EXPANSÍVEIS */}
                             {isExpanded && (
-                              <div className="px-3 pb-3 border-t border-slate-100 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                              <div className="px-3 pb-3 border-t border-slate-100 dark:border-gray-700 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
                                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                  <div className="flex items-center gap-1.5 text-slate-600">
+                                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                                     <Smartphone className="size-3.5 text-blue-500" />
                                     <span>NFC: <strong>{v.nfcVerified ? 'Verificado ✓' : 'Não verificado ✗'}</strong></span>
                                   </div>
@@ -1276,7 +1280,7 @@ export default function ValidationPage() {
                                   )}
                                 </div>
                                 {v.notes && (
-                                  <div className="text-[11px] text-slate-600 bg-slate-50 rounded px-2 py-1.5 border border-slate-100 italic">
+                                  <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-gray-800 rounded px-2 py-1.5 border border-slate-100 dark:border-gray-700 italic">
                                     "{v.notes}"
                                   </div>
                                 )}

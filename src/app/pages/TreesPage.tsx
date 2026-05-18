@@ -55,13 +55,13 @@ export default function TreesPage() {
   const getHealthBadge = (health: string) => {
     switch (health) {
       case 'excellent':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Excelente</Badge>;
+        return <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50">Excelente</Badge>;
       case 'good':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Boa</Badge>;
+        return <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50">Boa</Badge>;
       case 'fair':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Regular</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50">Regular</Badge>;
       case 'poor':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Ruim</Badge>;
+        return <Badge variant="outline" className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50">Ruim</Badge>;
       default:
         return <Badge variant="outline">Desconhecida</Badge>;
     }
@@ -110,7 +110,7 @@ export default function TreesPage() {
       <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Cadastro de Árvores</h1>
-          <p className="text-gray-600">Gerencie e monitore todas as árvores cadastradas</p>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie e monitore todas as árvores cadastradas</p>
         </div>
 
         <Button className="flex items-center gap-2" onClick={handleNewTreeClick}>
@@ -186,13 +186,13 @@ export default function TreesPage() {
                       className="size-14 rounded-md object-cover border shadow-sm flex-shrink-0"
                     />
                   ) : (
-                    <div className="size-14 rounded-md bg-gray-100 flex items-center justify-center text-gray-400 border border-dashed flex-shrink-0">
+                    <div className="size-14 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 border border-dashed dark:border-gray-700 flex-shrink-0">
                       <Camera className="size-6 opacity-50" />
                     </div>
                   )}
                   <div>
                     <CardTitle className="text-lg mb-1 leading-tight">{tree.species}</CardTitle>
-                    <p className="text-sm text-gray-600 font-mono text-xs">{tree.nfcId}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 font-mono text-xs">{tree.nfcId}</p>
                   </div>
                 </div>
 
@@ -206,13 +206,13 @@ export default function TreesPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="size-4 text-gray-400" />
-                    <span className="text-gray-600">Idade:</span>
+                    <Calendar className="size-4 text-gray-400 dark:text-gray-500" />
+                    <span className="text-gray-600 dark:text-gray-400">Idade:</span>
                     <span className="font-semibold">{tree.age} anos</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Thermometer className="size-4 text-gray-400" />
-                    <span className="text-gray-600">Temp:</span>
+                    <Thermometer className="size-4 text-gray-400 dark:text-gray-500" />
+                    <span className="text-gray-600 dark:text-gray-400">Temp:</span>
                     <span className={`font-semibold ${tree.temperature > 35 ? 'text-red-600' : tree.temperature > 30 ? 'text-yellow-600' : 'text-green-600'}`}>
                       {tree.temperature}°C
                     </span>
@@ -220,34 +220,34 @@ export default function TreesPage() {
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="size-4 text-gray-400" />
-                  <span className="text-gray-600">Localização:</span>
+                  <MapPin className="size-4 text-gray-400 dark:text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-400">Localização:</span>
                   <span className="font-mono text-xs">{tree.latitude}, {tree.longitude}</span>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
-                  <TreePine className="size-4 text-gray-400" />
-                  <span className="text-gray-600">Dimensões:</span>
+                  <TreePine className="size-4 text-gray-400 dark:text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-400">Dimensões:</span>
                   <span className="font-semibold">{tree.height}m alt, {tree.diameter}cm Ø</span>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   {getHealthBadge(tree.health)}
-                  <Badge variant="outline" className="capitalize bg-gray-50">
+                  <Badge variant="outline" className="capitalize bg-gray-50 dark:bg-gray-800">
                     {tree.manejo === 'sustentável' ? 'Manejo Sustentável' : 'Preservação Permanente'}
                   </Badge>
                   {tree.sensorConnected ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50">
                       Sensor Ativo
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                    <Badge variant="outline" className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50">
                       Sensor Offline
                     </Badge>
                   )}
                 </div>
 
-                <div className="text-xs text-gray-500 pt-2 border-t">
+                <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t dark:border-gray-700">
                   Atualizado em: {new Date(tree.lastUpdate).toLocaleString('pt-BR')}
                 </div>
 
@@ -256,7 +256,7 @@ export default function TreesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-gray-600"
+                    className="flex-1 text-gray-600 dark:text-gray-300"
                     onClick={() => handleViewHistory(tree)}
                   >
                     Ver Histórico
@@ -280,8 +280,8 @@ export default function TreesPage() {
       {filteredTrees.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <TreePine className="size-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Nenhuma árvore encontrada com os filtros aplicados.</p>
+            <TreePine className="size-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Nenhuma árvore encontrada com os filtros aplicados.</p>
           </CardContent>
         </Card>
       )}

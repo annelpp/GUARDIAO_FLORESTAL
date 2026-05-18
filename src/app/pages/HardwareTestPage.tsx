@@ -105,7 +105,7 @@ export default function HardwareTestPage() {
             <Usb className="size-8 text-blue-600" /> 
             Laboratório de Hardware
           </h1>
-          <p className="text-gray-600">Leitura em tempo real do ESP32 via cabo USB (Web Serial API)</p>
+          <p className="text-gray-600 dark:text-gray-400">Leitura em tempo real do ESP32 via cabo USB (Web Serial API)</p>
         </div>
         
         {!isConnected ? (
@@ -120,7 +120,7 @@ export default function HardwareTestPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 rounded-lg flex items-center gap-2">
           <AlertTriangle className="size-5" /> {error}
         </div>
       )}
@@ -128,7 +128,7 @@ export default function HardwareTestPage() {
       {/* Painel de Dados */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* TEMPERATURA */}
-        <Card className={`transition-colors ${isHeatExcessive ? 'border-red-500 bg-red-50' : ''}`}>
+        <Card className={`transition-colors ${isHeatExcessive ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Thermometer className={isHeatExcessive ? 'text-red-600' : 'text-gray-500'} />
@@ -138,7 +138,7 @@ export default function HardwareTestPage() {
           <CardContent>
             {sensorData ? (
               <>
-                <p className={`text-4xl font-bold ${isHeatExcessive ? 'text-red-600' : 'text-gray-900'}`}>
+                <p className={`text-4xl font-bold ${isHeatExcessive ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
                   {sensorData.temp.toFixed(1)}°C
                 </p>
                 {isHeatExcessive && (
@@ -146,13 +146,13 @@ export default function HardwareTestPage() {
                 )}
               </>
             ) : (
-              <p className="text-gray-400 text-sm">Aguardando dados...</p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm">Aguardando dados...</p>
             )}
           </CardContent>
         </Card>
 
         {/* FUMAÇA / GÁS */}
-        <Card className={`transition-colors ${gasStatus?.alert ? (sensorData!.gas > 250 ? 'border-red-500 bg-red-50' : 'border-yellow-500 bg-yellow-50') : ''}`}>
+        <Card className={`transition-colors ${gasStatus?.alert ? (sensorData!.gas > 250 ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20') : ''}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Wind className={gasStatus?.alert ? 'text-yellow-600' : 'text-gray-500'} />
@@ -162,19 +162,19 @@ export default function HardwareTestPage() {
           <CardContent>
             {sensorData ? (
               <>
-                <p className="text-4xl font-bold text-gray-900">{sensorData.gas}</p>
+                <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{sensorData.gas}</p>
                 <Badge className={`mt-2 ${gasStatus?.color}`}>
                   {gasStatus?.label}
                 </Badge>
               </>
             ) : (
-              <p className="text-gray-400 text-sm">Aguardando dados...</p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm">Aguardando dados...</p>
             )}
           </CardContent>
         </Card>
 
         {/* CHAMA */}
-        <Card className={`transition-colors ${isFlameDetected ? 'border-red-500 bg-red-50' : ''}`}>
+        <Card className={`transition-colors ${isFlameDetected ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Flame className={isFlameDetected ? 'text-red-600' : 'text-gray-500'} />
@@ -197,7 +197,7 @@ export default function HardwareTestPage() {
                 )}
               </>
             ) : (
-              <p className="text-gray-400 text-sm">Aguardando dados...</p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm">Aguardando dados...</p>
             )}
           </CardContent>
         </Card>
@@ -206,14 +206,14 @@ export default function HardwareTestPage() {
       {/* Log de atividade crua para debug */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm text-gray-500">Monitor Serial (RAW JSON)</CardTitle>
+          <CardTitle className="text-sm text-gray-500 dark:text-gray-400">Monitor Serial (RAW JSON)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-32 flex items-center justify-center">
             {isConnected ? (
                sensorData ? JSON.stringify(sensorData) : "Lendo porta COM..."
             ) : (
-              <span className="text-gray-600">Nenhum dispositivo conectado.</span>
+              <span className="text-gray-600 dark:text-gray-400">Nenhum dispositivo conectado.</span>
             )}
           </div>
         </CardContent>

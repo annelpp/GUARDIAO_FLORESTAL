@@ -83,7 +83,7 @@ export default function ReportsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">Relatórios e Analytics</h1>
-          <p className="text-gray-600">Análise completa do sistema de monitoramento</p>
+          <p className="text-gray-600 dark:text-gray-400">Análise completa do sistema de monitoramento</p>
         </div>
         <Button 
           className="flex items-center gap-2"
@@ -103,7 +103,7 @@ export default function ReportsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Crescimento Mensal</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Crescimento Mensal</p>
                 <TrendingUp className="size-4 text-green-600" />
               </div>
               <p className="text-3xl font-bold mb-1">+8</p>
@@ -117,7 +117,7 @@ export default function ReportsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Redução de Alertas</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Redução de Alertas</p>
                 <TrendingDown className="size-4 text-green-600" />
               </div>
               <p className="text-3xl font-bold mb-1">-47%</p>
@@ -131,22 +131,22 @@ export default function ReportsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Uptime Sistema</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Uptime Sistema</p>
                 <BarChart3 className="size-4 text-blue-600" />
               </div>
               <p className="text-3xl font-bold mb-1">{systemStats.uptime}%</p>
-              <p className="text-xs text-gray-600">99.5% meta mensal</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">99.5% meta mensal</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-600">Eficiência</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Eficiência</p>
                 <PieChart className="size-4 text-purple-600" />
               </div>
               <p className="text-3xl font-bold mb-1">97.4%</p>
-              <p className="text-xs text-gray-600">Sensores ativos</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Sensores ativos</p>
             </CardContent>
           </Card>
         </div>
@@ -331,7 +331,7 @@ export default function ReportsPage() {
                       </div>
                       <Badge variant="outline" className="text-lg px-3">{item.value}</Badge>
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {((item.value / 156) * 100).toFixed(1)}% do total
                     </p>
                   </div>

@@ -56,7 +56,7 @@ export default function TreeForm({ initialData, onSave, onCancel }: TreeFormProp
         {/* Seção de Imagem */}
         <div className="space-y-2">
           <Label>Foto da Árvore</Label>
-          <div className="relative h-48 w-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
+          <div className="relative h-48 w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center overflow-hidden group">
             {imagePreview ? (
               <>
                 <img src={imagePreview} className="absolute inset-0 w-full h-full object-cover" alt="Preview" />
@@ -65,7 +65,7 @@ export default function TreeForm({ initialData, onSave, onCancel }: TreeFormProp
                 </div>
               </>
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-gray-400 dark:text-gray-500">
                 <Camera className="mx-auto size-10 mb-2" />
                 <span className="text-xs">Anexar arquivo de imagem</span>
               </div>
