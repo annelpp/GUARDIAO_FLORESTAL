@@ -11,7 +11,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { alertStats, systemStats, mockTrees, mockAlerts, Tree } from '../data/mockData';
+import { alertStats, systemStats, mockAlerts } from '../data/mockData';
+import type { Tree } from '../data/mockData';
+import { supabase, mapDbTreeToFrontend } from '../../lib/supabase';
 import { exportToCSV, generateFullPDFReport, generateExecutiveSummary } from '../utils/exportUtils';
 
 export default function ReportsPage() {
@@ -19,12 +21,9 @@ export default function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    const savedTrees = localStorage.getItem('@CercaDigital:trees');
-    if (savedTrees) {
-      setTrees(JSON.parse(savedTrees));
-    } else {
-      setTrees(mockTrees);
-    }
+    supabase.from('trees').select('*').then(({ data }) => {
+      if (data) setTrees(data.map(mapDbTreeToFrontend));
+    }).catch(() => {});
   }, []);
 
   const healthDistribution = [

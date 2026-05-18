@@ -4,7 +4,7 @@ import {
   Smartphone, CheckCircle2, MapPin, Thermometer,
   Clock, User, FileText, AlertTriangle, Droplets,
   Wind, Usb, ShieldCheck, Flame, Info, Terminal, Activity,
-  CheckSquare, RefreshCw
+  CheckSquare, RefreshCw, Check, ChevronsUpDown, Search
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -13,10 +13,13 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog';
 import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockTrees, Tree } from '../data/mockData';
-import { toast } from 'sonner';
+import { cn } from '../components/ui/utils';
+import { Tree, ValidationRecord } from '../data/mockData';
+import { supabase, mapDbTreeToFrontend } from '../../lib/supabase';
+import { toast } from '../../lib/toast';
 
 // ==========================================
 // FUNÇÕES AUXILIARES (FORA DO COMPONENTE)
@@ -60,7 +63,46 @@ interface SensorData {
   gasStatus: string;
   alarme: boolean;
   msg: string;
+  gas: number | null;
+  fogo: number | null;
+  umidade: number | null;
 }
+
+const fiscaisList = [
+  { id: 'FIS-001', name: 'Adenilson Prestes' },
+  { id: 'FIS-002', name: 'Alef Barrozo' },
+  { id: 'FIS-003', name: 'Ana Costa' },
+  { id: 'FIS-004', name: 'Anne Pereira' },
+  { id: 'FIS-005', name: 'Brendo Freitas' },
+  { id: 'FIS-006', name: 'Carlos Santos' },
+  { id: 'FIS-007', name: 'Cecília Colares' },
+  { id: 'FIS-008', name: 'Cibely Dácio' },
+  { id: 'FIS-009', name: 'Eduarda Bomfim' },
+  { id: 'FIS-010', name: 'Gabriel Costa' },
+  { id: 'FIS-011', name: 'Gabriella Marciao' },
+  { id: 'FIS-012', name: 'Gustavo Bichara' },
+  { id: 'FIS-013', name: 'Hugo Monteiro' },
+  { id: 'FIS-014', name: 'João Torres' },
+  { id: 'FIS-015', name: 'João Menezes' },
+  { id: 'FIS-016', name: 'João Ferreira' },
+  { id: 'FIS-017', name: 'Larissa Vieira' },
+  { id: 'FIS-018', name: 'Lauriene Rufino' },
+  { id: 'FIS-019', name: 'Lucas Teixeira' },
+  { id: 'FIS-020', name: 'Lucas Silva' },
+  { id: 'FIS-021', name: 'Lucas Vasconcelos' },
+  { id: 'FIS-022', name: 'Lucas Freitas' },
+  { id: 'FIS-023', name: 'Lucas Salomão' },
+  { id: 'FIS-024', name: 'Marcos Souza' },
+  { id: 'FIS-025', name: 'Matheus Tavares' },
+  { id: 'FIS-026', name: 'Micael Barrozo' },
+  { id: 'FIS-027', name: 'Randrews Reis' },
+  { id: 'FIS-028', name: 'Rômulo Araújo' },
+  { id: 'FIS-029', name: 'Sérgio Nascimento' },
+  { id: 'FIS-030', name: 'Vinicius Souza' },
+  { id: 'FIS-031', name: 'Vinicius Souza' },
+  { id: 'FIS-032', name: 'Vitor Monteiro' },
+  { id: 'FIS-033', name: 'Vitória Pereira' },
+];
 
 export default function ValidationPage() {
   // ==========================================
@@ -77,11 +119,15 @@ export default function ValidationPage() {
     temp: null,
     gasStatus: 'Aguardando...',
     alarme: false,
-    msg: 'Monitoramento inativo'
+    msg: 'Monitoramento inativo',
+    gas: null,
+    fogo: null,
+    umidade: null,
   });
 
   const [serialError, setSerialError] = useState<string>('');
   const [serialLogs, setSerialLogs] = useState<string[]>([]);
+  const [sensorHistory, setSensorHistory] = useState<{ temp: number | null; gasStatus: string; alarme: boolean; msg: string; recorded_at: string; gas: number | null; fogo: number | null; umidade: number | null }[]>([]);
 
   const logEndRef = useRef<HTMLDivElement>(null);
   const readerRef = useRef<any>(null);
@@ -97,6 +143,77 @@ export default function ValidationPage() {
     }
   }, [treeIdFromUrl]);
 
+  // Captura snapshots dos sensores no histórico + salva no Supabase
+  useEffect(() => {
+    if (isConnected && sensorData && sensorData.temp !== null) {
+      const snapshot = { ...sensorData, gas: sensorData.gas, fogo: sensorData.fogo, umidade: sensorData.umidade, recorded_at: new Date().toISOString() };
+      setSensorHistory(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.temp === sensorData.temp && last.alarme === sensorData.alarme) return prev;
+        return [...prev, snapshot];
+      });
+      supabase.from('sensor_readings').insert({
+        tree_id: null,
+        temp: sensorData.temp,
+        umidade: sensorData.umidade,
+        gas: sensorData.gas,
+        alarme: sensorData.alarme,
+        fogo: sensorData.fogo,
+        msg: sensorData.msg,
+      }).then().catch(() => { });
+    }
+  }, [sensorData, isConnected]);
+
+  // ==========================================
+  // CARGA INICIAL DO SUPABASE
+  // ==========================================
+  useEffect(() => {
+    supabase.from('trees').select('id, nfc_id, species')
+      .then(({ data }) => {
+        if (data) setDbTrees(data);
+      })
+      .catch(() => { });
+
+    supabase.from('validations').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const mapped: ValidationRecord[] = data.map((r: any) => ({
+            id: r.id,
+            treeId: r.tree_id,
+            fiscalName: r.fiscal_name,
+            timestamp: r.created_at,
+            nfcVerified: r.nfc_verified,
+            sensorVerified: r.sensor_snapshot?.sensorVerified ?? false,
+            temperature: r.sensor_snapshot?.temperature ?? 0,
+            location: r.inspection_data?.location ?? '',
+            notes: r.notes ?? '',
+            status: r.status,
+            _treeSpecies: r.inspection_data?.tree_species ?? '',
+            _treeNfcId: r.inspection_data?.tree_nfc_id ?? '',
+          }));
+          setValidationHistory(mapped);
+        }
+      })
+      .catch(() => { });
+
+    supabase.from('sensor_readings').select('*').limit(100)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setSensorHistory(data.map((r: any) => ({
+            temp: r.temp,
+            gasStatus: r.gas != null ? (r.fogo ? `Fogo: ${r.fogo}` : r.gas <= 200 ? `Gás: ${r.gas}` : `Gás: ${r.gas}`) : '--',
+            alarme: r.alarme ?? false,
+            msg: r.msg ?? '',
+            recorded_at: r.created_at || new Date().toISOString(),
+            gas: r.gas,
+            fogo: r.fogo,
+            umidade: r.umidade,
+          })).reverse());
+        }
+      })
+      .catch(() => { });
+  }, []);
+
   // ==========================================
   // ESTADO 2: AUDITORIA DE ÁRVORE (NFC + HUMANO)
   // ==========================================
@@ -104,6 +221,34 @@ export default function ValidationPage() {
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fiscalName, setFiscalName] = useState('');
   const [fiscalId, setFiscalId] = useState('');
+  const [validationHistory, setValidationHistory] = useState<ValidationRecord[]>([]);
+  const [fiscalOpen, setFiscalOpen] = useState(false);
+  const [fiscalSearch, setFiscalSearch] = useState('');
+  const [expandedValId, setExpandedValId] = useState<string | null>(null);
+  const [expandedSnapIdx, setExpandedSnapIdx] = useState<number | null>(null);
+  const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
+
+  const clearSensorHistory = () => {
+    setSensorHistory([]);
+    supabase.from('sensor_readings').delete().neq('id', 0).then().catch(() => { });
+    setClearHistoryOpen(false);
+  };
+  const fiscalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (fiscalRef.current && !fiscalRef.current.contains(e.target as Node)) {
+        setFiscalOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filteredFiscais = fiscaisList.filter(f =>
+    f.name.toLowerCase().includes(fiscalSearch.toLowerCase()) ||
+    f.id.toLowerCase().includes(fiscalSearch.toLowerCase())
+  );
   const [notes, setNotes] = useState('');
   const [nfcVerified, setNfcVerified] = useState(false);
 
@@ -128,12 +273,18 @@ export default function ValidationPage() {
       : `${biomassaKg.toFixed(2)} kg`;
   };
 
-  const [localTrees, setLocalTrees] = useState<Tree[]>(mockTrees);
+  const [localTrees, setLocalTrees] = useState<Tree[]>([]);
+  const [dbTrees, setDbTrees] = useState<{ id: string; nfc_id: string; species: string }[]>([]);
   const fullTreeData = localTrees.find(t => t.id === selectedTreeId);
 
   useEffect(() => {
-    const savedTrees = localStorage.getItem('@CercaDigital:trees');
-    if (savedTrees) setLocalTrees(JSON.parse(savedTrees));
+    supabase.from('trees').select('*').then(({ data }) => {
+      if (data) {
+        const mapped = data.map(mapDbTreeToFrontend);
+        setLocalTrees(mapped);
+        setDbTrees(data.map((r: any) => ({ id: r.id, nfc_id: r.nfc_id, species: r.species })));
+      }
+    }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -209,7 +360,7 @@ export default function ValidationPage() {
                 if (typeof json.temp === 'number') {
                   parsedTemp = json.temp;
                   dataReceived = true;
-                  if (json.temp >= 32) {
+                  if (json.temp >= 30) {
                     playFeedback('error');
                     toast.error("Alerta Crítico: Calor Extremo", { description: "Temperatura acima de 40°C no perímetro." });
                   }
@@ -295,7 +446,10 @@ export default function ValidationPage() {
                 temp: parsedTemp !== null ? parsedTemp : prev.temp,
                 gasStatus: parsedGas !== null ? parsedGas : prev.gasStatus,
                 alarme: parsedAlarm !== null ? parsedAlarm : prev.alarme,
-                msg: parsedMsg !== null ? parsedMsg : prev.msg
+                msg: parsedMsg !== null ? parsedMsg : prev.msg,
+                gas: parsedTemp !== null && cleanLine.startsWith('{') ? (JSON.parse(cleanLine).gas ?? prev.gas) : prev.gas,
+                fogo: parsedTemp !== null && cleanLine.startsWith('{') ? (JSON.parse(cleanLine).fogo ?? prev.fogo) : prev.fogo,
+                umidade: parsedTemp !== null && cleanLine.startsWith('{') ? (JSON.parse(cleanLine).umidade ?? prev.umidade) : prev.umidade,
               }));
             } else {
               // Mesmo sem conseguir parsear, marca o monitoramento como ativo
@@ -393,7 +547,7 @@ export default function ValidationPage() {
   // FINALIZAÇÃO DA AUDITORIA
   // ==========================================
   const submitValidation = () => {
-    let finalStatus = 'approved';
+    let finalStatus: 'approved' | 'rejected' | 'pending' = 'approved';
 
     if (
       inspectionData.illegalCutSigns ||
@@ -401,6 +555,45 @@ export default function ValidationPage() {
     ) {
       finalStatus = 'rejected';
     }
+
+    const newRecord: ValidationRecord = {
+      id: `val-${Date.now()}`,
+      treeId: selectedTreeId!,
+      fiscalName,
+      timestamp: new Date().toISOString(),
+      nfcVerified,
+      sensorVerified: sensorData?.alarme === false,
+      temperature: sensorData?.temp ?? 0,
+      location: fullTreeData?.location || '',
+      notes,
+      status: finalStatus,
+    };
+
+    setValidationHistory(prev => [newRecord, ...prev]);
+
+    (async () => {
+      const { error } = await supabase.from('validations').insert({
+        tree_id: selectedTreeId,
+        fiscal_name: fiscalName,
+        fiscal_id: fiscalId,
+        nfc_verified: nfcVerified,
+        sensor_snapshot: {
+          sensorVerified: sensorData?.alarme === false,
+          temperature: sensorData?.temp ?? 0,
+        },
+        inspection_data: {
+          location: fullTreeData?.location || '',
+          tree_species: fullTreeData?.species || '',
+          tree_nfc_id: fullTreeData?.nfcId || '',
+          ...inspectionData,
+        },
+        biomass_calculated: calcularBiomassa(inspectionData.currentDiameter, inspectionData.currentHeight),
+        notes,
+        photos_count: inspectionData.photosCount,
+        status: finalStatus,
+      });
+      if (error) console.error('Erro ao salvar validação no Supabase:', error);
+    })();
 
     try {
       if (finalStatus === 'approved') {
@@ -466,17 +659,17 @@ export default function ValidationPage() {
                   <div className="flex items-center gap-2">
                     {sensorData?.alarme ? (
                       <AlertTriangle className="size-5 text-red-600" />
-                    ) : sensorData?.temp !== null && sensorData.temp >= 32 ? (
+                    ) : sensorData?.temp !== null && sensorData.temp >= 30 ? (
                       <AlertTriangle className="size-5 text-orange-500" />
                     ) : (
                       <CheckCircle2 className="size-5 text-green-600" />
                     )}
                     <span className={`font-semibold ${sensorData?.alarme ? 'text-red-800' :
-                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-800' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-800' :
                         'text-green-800'
                       }`}>
                       {sensorData?.alarme ? 'ALERTA CRÍTICO NO PERÍMETRO' :
-                        sensorData?.temp !== null && sensorData.temp >= 32 ? 'ATENÇÃO TÉRMICA' :
+                        sensorData?.temp !== null && sensorData.temp >= 30 ? 'ATENÇÃO TÉRMICA' :
                           'Área Segura e Conectada'}
                     </span>
                   </div>
@@ -488,10 +681,10 @@ export default function ValidationPage() {
                 {/* 2. CAIXA DE MENSAGEM */}
                 {sensorData && (
                   <div className={`px-3 py-1.5 rounded text-sm italic flex items-center gap-2 border shadow-sm ${sensorData.alarme ? 'bg-red-50 border-red-200 text-red-700' :
-                    sensorData.temp !== null && sensorData.temp >= 32 ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                    sensorData.temp !== null && sensorData.temp >= 30 ? 'bg-orange-50 border-orange-200 text-orange-700' :
                       'bg-white border-slate-200 text-slate-700'
                     }`}>
-                    <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp !== null && sensorData.temp >= 32 ? 'text-orange-500' : 'text-blue-500'}`} />
+                    <Info className={`size-4 ${sensorData.alarme ? 'text-red-500' : sensorData.temp !== null && sensorData.temp >= 30 ? 'text-orange-500' : 'text-blue-500'}`} />
                     Status da Área: <strong>{sensorData.msg}</strong>
                   </div>
                 )}
@@ -499,15 +692,15 @@ export default function ValidationPage() {
                 {/* 3. OS 4 CARTÕES DE DADOS FÍSICOS */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'bg-red-100 border-red-500' :
-                    sensorData?.temp !== null && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' :
+                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 border-orange-400' :
                       'bg-white'
                     }`}>
                     <Thermometer className={`size-5 mb-1 ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-600' :
-                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-600' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-600' :
                         'text-orange-500'
                       }`} />
                     <span className={`font-bold text-sm ${sensorData?.temp !== null && sensorData.temp >= 40 ? 'text-red-700' :
-                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-700' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-700' :
                         'text-slate-800'
                       }`}>
                       {sensorData?.temp !== null ? sensorData.temp.toFixed(1) : '--'}°C
@@ -521,19 +714,19 @@ export default function ValidationPage() {
 
                   {/* CARTÃO DE STATUS GERAL DA ESTAÇÃO */}
                   <div className={`p-2 rounded-lg border text-center shadow-sm flex flex-col items-center justify-center h-20 transition-colors ${sensorData?.alarme ? 'bg-red-100 border-red-500' :
-                    sensorData?.temp !== null && sensorData.temp >= 32 ? 'bg-orange-100 border-orange-400' :
+                    sensorData?.temp !== null && sensorData.temp >= 30 ? 'bg-orange-100 border-orange-400' :
                       'bg-white'
                     }`}>
                     <Flame className={`size-5 mb-1 ${sensorData?.alarme ? 'text-red-600' :
-                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-500' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-500' :
                         'text-green-500'
                       }`} />
                     <span className={`font-bold text-xs tracking-wider ${sensorData?.alarme ? 'text-red-600' :
-                      sensorData?.temp !== null && sensorData.temp >= 32 ? 'text-orange-600' :
+                      sensorData?.temp !== null && sensorData.temp >= 30 ? 'text-orange-600' :
                         'text-green-600'
                       }`}>
                       {sensorData?.alarme ? 'PERIGO' :
-                        sensorData?.temp !== null && sensorData.temp >= 32 ? 'ATENÇÃO' :
+                        sensorData?.temp !== null && sensorData.temp >= 30 ? 'ATENÇÃO' :
                           'SEGURO'}
                     </span>
                   </div>
@@ -584,6 +777,144 @@ export default function ValidationPage() {
                 </div>
               </div>
             )}
+
+            {/* ========================================== */}
+            {/* HISTÓRICO DE LEITURAS DOS SENSORES */}
+            {/* ========================================== */}
+            <details className="group">
+              <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700 transition-colors list-none">
+                <Clock className="size-3.5" />
+                Histórico de Leituras ({sensorHistory.length})
+                <span className="flex-1" />
+                {sensorHistory.length > 0 && (
+                  <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
+                    <AlertDialogTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-50 -mr-1">
+                        Limpar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                          <AlertTriangle className="size-5" /> Limpar Histórico de Leituras
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3 pt-2">
+                          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
+                            <strong>⚠️ Atenção:</strong> Para uma validação real dos dados coletados, mantenha o histórico por no mínimo <strong>3 dias consecutivos</strong> de leituras. Isso permite identificar padrões, anomalias e tendências térmicas da região monitorada.
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            A limpeza apaga todos os registros de leitura <strong>da sessão atual e do banco de dados</strong>. Esta ação é irreversível.
+                          </p>
+                          <p className="text-sm text-slate-500 italic">
+                            Recomendamos exportar os dados antes de limpar, caso necessário para relatórios futuros.
+                          </p>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={(e: React.MouseEvent) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={(e: React.MouseEvent) => { e.stopPropagation(); clearSensorHistory(); }} className="bg-red-600 hover:bg-red-700">
+                          Sim, limpar histórico
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                <ChevronsUpDown className="size-3 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="mt-3 max-h-96 overflow-y-auto space-y-1.5">
+                {sensorHistory.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">Nenhuma leitura registrada ainda. Conecte o Arduino para começar.</p>
+                ) : (
+                  [...sensorHistory].reverse().map((snap, idx) => {
+                    const realIdx = sensorHistory.length - 1 - idx;
+                    const isExpanded = expandedSnapIdx === realIdx;
+                    const isAlarm = snap.alarme;
+                    const isWarning = !isAlarm && snap.temp !== null && snap.temp >= 30;
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "rounded-lg border shadow-sm transition-all cursor-pointer",
+                          isExpanded ? "ring-1" : "hover:border-slate-300",
+                          isAlarm ? "bg-red-50 border-red-200 ring-red-200" :
+                            isWarning ? "bg-orange-50 border-orange-200 ring-orange-200" :
+                              isExpanded ? "border-blue-300 ring-blue-200" : "bg-white border-slate-200"
+                        )}
+                        onClick={() => setExpandedSnapIdx(isExpanded ? null : realIdx)}
+                      >
+                        {/* CABEÇALHO — sempre visível */}
+                        <div className="px-3 py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {isAlarm ? (
+                              <Flame className="size-4 shrink-0 text-red-500" />
+                            ) : isWarning ? (
+                              <AlertTriangle className="size-4 shrink-0 text-orange-500" />
+                            ) : (
+                              <CheckCircle2 className="size-4 shrink-0 text-green-500" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "font-bold text-sm font-mono",
+                                  isAlarm ? "text-red-700" : isWarning ? "text-orange-700" : "text-slate-800"
+                                )}>
+                                  {snap.temp?.toFixed(1)}°C
+                                </span>
+                                <span className={cn(
+                                  "text-[10px] font-semibold uppercase tracking-wider",
+                                  isAlarm ? "text-red-600" : isWarning ? "text-orange-600" : "text-green-600"
+                                )}>
+                                  {isAlarm ? 'Perigo' : isWarning ? 'Atenção' : 'Normal'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate">{snap.msg}</p>
+                            </div>
+                          </div>
+                          <span className="text-slate-400 font-mono text-[10px] shrink-0 ml-2">
+                            {snap.recorded_at ? new Date(snap.recorded_at).toLocaleTimeString('pt-BR') : '--:--:--'}
+                          </span>
+                        </div>
+
+                        {/* DETALHES EXPANSÍVEIS */}
+                        {isExpanded && (
+                          <div className="px-3 pb-3 border-t border-slate-100 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="grid grid-cols-2 gap-2 text-[11px]">
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Thermometer className="size-3.5 text-orange-500" />
+                                <span>Temperatura: <strong>{snap.temp?.toFixed(1)}°C</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Wind className="size-3.5 text-slate-500" />
+                                <span>Gás: <strong>{snap.gasStatus}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                {isAlarm ? (
+                                  <Flame className="size-3.5 text-red-500" />
+                                ) : (
+                                  <CheckCircle2 className="size-3.5 text-green-500" />
+                                )}
+                                <span>Alarme: <strong>{isAlarm ? 'Ativo' : 'Inativo'}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Clock className="size-3.5 text-slate-400" />
+                                <span>
+                                  {snap.recorded_at ? new Date(snap.recorded_at).toLocaleString('pt-BR') : '--/--/---- --:--:--'}
+                                </span>
+                              </div>
+                            </div>
+                            {snap.msg && snap.msg !== 'Monitoramento inativo' && (
+                              <div className="text-[11px] text-slate-600 bg-slate-50 rounded px-2 py-1.5 border border-slate-100 italic">
+                                "{snap.msg}"
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </details>
           </CardContent>
         </Card>
 
@@ -599,14 +930,62 @@ export default function ValidationPage() {
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fiscal">Nome do Fiscal *</Label>
-                  <Input id="fiscal" placeholder="João Silva" value={fiscalName} onChange={(e) => setFiscalName(e.target.value)} disabled={treeStep !== 'idle'} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fiscalId">ID Operacional *</Label>
-                  <Input id="fiscalId" placeholder="12345" value={fiscalId} onChange={(e) => setFiscalId(e.target.value)} disabled={treeStep !== 'idle'} />
+              <div className="space-y-2">
+                <Label>Fiscal Responsável *</Label>
+                <div className="relative" ref={fiscalRef}>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={fiscalOpen}
+                    className="w-full justify-between"
+                    disabled={treeStep !== 'idle'}
+                    onClick={() => setFiscalOpen(!fiscalOpen)}
+                  >
+                    {fiscalName ? (
+                      <span>{fiscalName} <span className="text-xs text-muted-foreground">({fiscalId})</span></span>
+                    ) : (
+                      <span className="text-muted-foreground">Selecione o fiscal...</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                  {fiscalOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-hidden">
+                      <div className="flex items-center gap-2 border-b px-3">
+                        <Search className="size-4 shrink-0 opacity-50" />
+                        <input
+                          className="flex h-10 w-full bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Buscar fiscal por nome ou ID..."
+                          value={fiscalSearch}
+                          onChange={(e) => setFiscalSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {filteredFiscais.length === 0 && (
+                          <div className="py-6 text-center text-sm">Nenhum fiscal encontrado.</div>
+                        )}
+                        {filteredFiscais.map((f) => (
+                          <div
+                            key={f.id}
+                            className="flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground aria-selected:bg-accent"
+                            onClick={() => {
+                              setFiscalName(f.name);
+                              setFiscalId(f.id);
+                              setFiscalOpen(false);
+                              setFiscalSearch('');
+                            }}
+                          >
+                            <Check className={cn("mr-2 size-4", fiscalId === f.id ? "opacity-100" : "opacity-0")} />
+                            <User className="size-4 mr-2 text-muted-foreground" />
+                            <div className="flex flex-col">
+                              <span>{f.name}</span>
+                              <span className="text-xs text-muted-foreground">{f.id}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -808,6 +1187,108 @@ export default function ValidationPage() {
                   </div>
                 </div>
               )}
+
+              {/* ========================================== */}
+              {/* HISTÓRICO DE VALIDAÇÕES */}
+              {/* ========================================== */}
+              <div className="pt-4 border-t border-slate-200">
+                <details className="group">
+                  <summary className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700 transition-colors list-none">
+                    <FileText className="size-3.5" />
+                    Histórico de Validações ({validationHistory.length})
+                    <ChevronsUpDown className="size-3 ml-auto group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="mt-3 max-h-96 overflow-y-auto space-y-2">
+                    {validationHistory.length === 0 ? (
+                      <p className="text-sm text-slate-400 text-center py-4">Nenhuma validação realizada ainda.</p>
+                    ) : (
+                      validationHistory.map((v) => {
+                        const tree = localTrees.find(t => t.id === v.treeId);
+                        const treeName = tree?.species ?? (v as any)._treeSpecies ?? null;
+                        const treeNfcId = tree?.nfcId ?? (v as any)._treeNfcId ?? null;
+                        const isExpanded = expandedValId === v.id;
+                        return (
+                          <div
+                            key={v.id}
+                            className={cn(
+                              "rounded-lg border shadow-sm transition-all cursor-pointer",
+                              isExpanded ? "border-green-300 ring-1 ring-green-200" : "border-slate-200 hover:border-slate-300",
+                              v.status === 'approved' ? "bg-white" : v.status === 'rejected' ? "bg-red-50" : "bg-yellow-50"
+                            )}
+                            onClick={() => setExpandedValId(isExpanded ? null : v.id)}
+                          >
+                            {/* CABEÇALHO — sempre visível */}
+                            <div className="p-3 space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  {treeName ? (
+                                    <>
+                                      <p className="text-sm font-bold text-slate-800 truncate">{treeName}</p>
+                                      <p className="text-[11px] text-slate-400 font-mono">{treeNfcId}</p>
+                                    </>
+                                  ) : (
+                                    <p className="text-sm text-slate-400 italic">Árvore não encontrada</p>
+                                  )}
+                                </div>
+                                <Badge className={cn(
+                                  "shrink-0",
+                                  v.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
+                                    v.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                                      'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                )}>
+                                  {v.status === 'approved' ? 'Aprovado' : v.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                                <span className="flex items-center gap-1">
+                                  <User className="size-3" /> {v.fiscalName}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="size-3" />
+                                  {new Date(v.timestamp).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* DETALHES EXPANSÍVEIS */}
+                            {isExpanded && (
+                              <div className="px-3 pb-3 border-t border-slate-100 pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                  <div className="flex items-center gap-1.5 text-slate-600">
+                                    <Smartphone className="size-3.5 text-blue-500" />
+                                    <span>NFC: <strong>{v.nfcVerified ? 'Verificado ✓' : 'Não verificado ✗'}</strong></span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-slate-600">
+                                    <Activity className="size-3.5 text-green-500" />
+                                    <span>Sensor: <strong>{v.sensorVerified ? 'OK ✓' : 'Falha ✗'}</strong></span>
+                                  </div>
+                                  {v.temperature > 0 && (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <Thermometer className="size-3.5 text-orange-500" />
+                                      <span>Temperatura: <strong>{v.temperature.toFixed(1)}°C</strong></span>
+                                    </div>
+                                  )}
+                                  {v.location && (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <MapPin className="size-3.5 text-red-400" />
+                                      <span className="truncate">{v.location}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {v.notes && (
+                                  <div className="text-[11px] text-slate-600 bg-slate-50 rounded px-2 py-1.5 border border-slate-100 italic">
+                                    "{v.notes}"
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </details>
+              </div>
             </CardContent>
           </Card>
         </div>

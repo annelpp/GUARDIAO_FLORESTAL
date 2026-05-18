@@ -1,24 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, MapPin, Thermometer, Calendar, TreePine, Camera } from 'lucide-react';
+import { Loader2, Plus, Search, Filter, MapPin, Thermometer, Calendar, TreePine, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockTrees, Tree } from '../data/mockData';
+import { Tree } from '../data/mockData';
+import { supabase, mapDbTreeToFrontend, mapTreeToDb } from '../../lib/supabase';
 import TreeForm from '../components/TreeForm';
 import TreeHistoryModal from '../components/TreeHistoryModal';
 
 export default function TreesPage() {
-  const [trees, setTrees] = useState<Tree[]>(() => {
-    const savedTrees = localStorage.getItem('@CercaDigital:trees');
-    if (savedTrees) {
-      return JSON.parse(savedTrees);
-    }
-    return mockTrees;
-  });
-
+  const [trees, setTrees] = useState<Tree[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -29,8 +24,13 @@ export default function TreesPage() {
   const [historyTree, setHistoryTree] = useState<Tree | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('@CercaDigital:trees', JSON.stringify(trees));
-  }, [trees]);
+    supabase.from('trees').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setTrees(data.map(mapDbTreeToFrontend));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredTrees = trees.filter(tree => {
     const matchesSearch = tree.species.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,22 +82,24 @@ export default function TreesPage() {
     setIsHistoryOpen(true);
   };
 
-  const handleSaveTree = (data: Partial<Tree>) => {
-    if (editingTree) {
-      setTrees(prev => prev.map(t => t.id === editingTree.id ? { ...t, ...data } as Tree : t));
-    } else {
-      const newTree: Tree = {
-        ...data,
-        id: `tree-${Math.random().toString(36).substr(2, 9)}`,
-        status: 'safe',
-        health: 'excellent',
-        temperature: 25.0,
-        lastUpdate: new Date().toISOString(),
-        registrationDate: new Date().toISOString().split('T')[0],
-        sensorConnected: false,
-      } as Tree;
+  const handleSaveTree = async (data: Partial<Tree>) => {
+    const dbPayload = mapTreeToDb({
+      ...data,
+      status: editingTree?.status || 'safe',
+      health: editingTree?.health || 'excellent',
+      temperature: editingTree?.temperature ?? 25.0,
+      sensorConnected: editingTree?.sensorConnected ?? false,
+      registrationDate: editingTree?.registrationDate || new Date().toISOString().split('T')[0],
+    });
 
-      setTrees(prev => [newTree, ...prev]);
+    if (editingTree) {
+      const { error } = await supabase.from('trees').update(dbPayload).eq('id', editingTree.id);
+      if (error) { console.error('Erro ao atualizar árvore:', error); return; }
+      setTrees(prev => prev.map(t => t.id === editingTree.id ? { ...t, ...data, imageUrl: data.imageUrl || getTreeImage(data.nfcId || t.nfcId) || t.imageUrl } as Tree : t));
+    } else {
+      const { data: inserted, error } = await supabase.from('trees').insert(dbPayload).select().single();
+      if (error) { console.error('Erro ao criar árvore:', error); return; }
+      if (inserted) setTrees(prev => [mapDbTreeToFrontend(inserted), ...prev]);
     }
     setIsDialogOpen(false);
   };
